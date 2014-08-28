@@ -47,21 +47,31 @@ main (URL0, Destination0) ->
 
 %% Internals
 
+list_titles (DocsRoot, Titles) ->
+    Items = [ begin
+                  ErldocsP = filename:join([DocsRoot, Branch, "index.html"]),
+                  case file:read_file_info(ErldocsP) of
+                      {ok, _} ->
+                          "<a href=\""++Branch++"\">"++Branch++"</a>";
+                      {error, _} ->
+                          other_utils:rmrf(filename:dirname(ErldocsP)),
+                          Branch
+                  end
+              end || {_,Branch} <- Titles ],
+    Spaces = lists:duplicate(3, "&nbsp;"),
+    string:join(Items, Spaces).
+
 put_repo_index (DocsRoot, Meta) ->
     {_, Url}      = lists:keyfind(url, 1, Meta),
     {_, Repo}     = lists:keyfind(target_path, 1, Meta),
     {_, Tags}     = lists:keyfind(tags, 1, Meta),
     {_, Branches} = lists:keyfind(branches, 1, Meta),
-    F = fun ({_,B}) ->
-                "\t\t<p><a href=\""++B++"\">"++B++"</a><br/></p>\n"
-        end,
-    HTML = "<a name=\"tags\"><h3>Tags</h3></a>"
-        ++ lists:flatmap(F, Tags)
-        ++ "<br/><br/>"
-        ++ "<a name=\"branches\"><h3>Branches</h3></a>"
-        ++ lists:flatmap(F, Branches),
-    Args = [ {base, "master/"}
-           , {title, Repo}
+    HTML = "<h3 id=\"tags\">Tags</h3>"
+        ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>"
+        ++ "<br/>"
+        ++ "\n\t<h3 id=\"branches\">Branches</h3>"
+        ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>",
+    Args = [ {title, Repo}
            , {url, Url}
            , {content, HTML} ],
     {ok, Data} = repo_dtl:render(Args),
@@ -79,7 +89,10 @@ erldocs (DocsRoot, Clones) ->
                              ++ [ "-I"++filename:join(Path, Inc)
                                   || Inc <- filelib:wildcard(Path++"/deps/*/include")]
                            ]),
-              other_utils:rmrf(filename:dirname(Path))
+              %% rm git repo
+              other_utils:rmrf(filename:dirname(Path)),
+              %% rm repo/branch/.xml/
+              other_utils:rmrf(filename:join(DocsDest, ".xml"))
       end, Clones).
 
 duplicate_repo (git, RepoName, Meta, DestDir) ->
