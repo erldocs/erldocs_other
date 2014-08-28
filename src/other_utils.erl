@@ -5,22 +5,29 @@
 
 %% other_utils: shell utilities for other_core.
 
--export([ rmrf/1 
+-export([ rmrf/1
+        , cp/3
+
         , git_clone/2
         , git_branches/1
         , git_tags/1
+        , git_changeto/2
         ]).
 
 
 %% API
 
 rmrf (Dir) ->
-    {0,_} = shh("rm -rf '~s'", [Dir]),
+    {0,_} = sh("rm -rf '~s'", [Dir]),
+    ok.
+
+cp (ChDir, Src, Dst) ->
+    {0,_} = sh(ChDir, "cp -pr '~s' '~s'", [Src,Dst]),
     ok.
 
 
 git_clone (Url, Dir) ->
-    {0,_} = shh("git clone -n -- '~s' '~s'", [Url,Dir]),
+    {0,_} = shh("git clone --no-checkout -- '~s' '~s'", [Url,Dir]),
     ok.
 
 git_branches (RepoDir) ->
@@ -35,6 +42,10 @@ git_tags (RepoDir) ->
                   "   echo \"$tag\t$(git rev-list \"$tag\" | head -n 1)\";"
                   " done", []),
     [{shorten(Commit),Tag} || {Tag,Commit} <- Tags].
+
+git_changeto (RepoDir, Commit) ->
+    {0,_} = sh(RepoDir, "git checkout --quiet '~s'", [Commit]),
+    ok.
 
 %% Internals
 
@@ -53,7 +64,7 @@ sh (Dir, Fmt, Data) ->
 
 sh (Fmt, Data) ->
     Cmd = lists:flatten(io_lib:format(Fmt, Data)),
-    run(Cmd, 10*1000).
+    run(Cmd, 30*1000).
 
 run (Cmd, Timeout) ->
     Port = open_port({spawn,Cmd}, [exit_status]),

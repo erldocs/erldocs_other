@@ -3,7 +3,7 @@ all: erl.mk | ensure
 erl.mk:
 	curl -fsSLo $@ 'https://raw.github.com/fenollp/erl-mk/master/erl.mk' || rm $@
 
-#dep_erldocs = https://github.com/erldocs/erldocs.git master
+dep_erldocs = https://github.com/erldocs/erldocs.git master
 
 include erl.mk
 
