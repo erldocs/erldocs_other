@@ -7,9 +7,9 @@
 
 -export([ main/1 ]).
 
--record(conf, { odir = ""
+-record(conf, { dest = ""
               , url  = ""
-              }).
+              , ga = "UA-54292016-1" }).
 
 %% API
 
@@ -24,21 +24,25 @@ main (Args) ->
 %% Internals
 
 parse ([], Conf) ->
-    ODir = Conf#conf.odir,
+    Dest = Conf#conf.dest,
     URL  = Conf#conf.url,
-    case (ODir == "") or (URL == "") of
+    case (Dest == "") or (URL == "") of
         true  -> main([]);
-        false -> run(URL, ODir)
+        false -> run([ {dest, Dest}
+                     , {url,  URL}
+                     , {ga,   Conf#conf.ga} ])
     end;
 
-parse (["-o", ODir | Rest], Conf) ->
-    parse(Rest, Conf#conf{odir = ODir});
-parse ([URL | Rest], Conf) ->
+parse (["-o", Dest | Rest], Conf) ->
+    parse(Rest, Conf#conf{dest = Dest});
+parse (["--ga", GA | Rest], Conf) ->
+    parse(Rest, Conf#conf{ga   = GA  });
+parse ([URL        | Rest], Conf) ->
     parse(Rest, Conf#conf{url  = URL }).
 
 
-run (A1, A2) ->
-    try other_core:main(A1, A2)
+run (Args) ->
+    try other_core:main(Args)
     catch Type:Error ->
             io:format("Error running ~p:\n~p\n~p\n",
                       [?MODULE, erlang:get_stacktrace(), {Type,Error}]),

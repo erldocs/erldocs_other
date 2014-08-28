@@ -5,7 +5,7 @@
 
 %% other_core: main logic of the “other” module.
 
--export([ main/2 ]).
+-export([ main/1 ]).
 
 -define(LOG(Str, Args), io:format(" :: "++ Str, Args)).
 -define(LOG(Str),       io:format(" :: "++ Str)).
@@ -13,8 +13,9 @@
 
 %% API
 
--spec main (string(), file:name()) -> term().
-main (URL0, Destination0) ->
+main (Conf) ->
+    URL0         = kf(Conf, url),
+    Destination0 = kf(Conf, dest),
     {Method, Url} = method(string:to_lower(URL0)),
     RepoName = repo_name(Url),
 
@@ -41,9 +42,9 @@ main (URL0, Destination0) ->
     %%Probably `make` cloned repos (using shell's <> & sandbox)
 
     ?LOG("Generating erldocs.\n"),
-    erldocs(DocsRoot, Clones),
+    erldocs(Conf, DocsRoot, Clones),
     ?LOG("Erldocs finishing up.\n"),
-    put_repo_index(DocsRoot, Meta).
+    put_repo_index(Conf, DocsRoot, Meta).
 
 %% Internals
 
@@ -61,11 +62,11 @@ list_titles (DocsRoot, Titles) ->
     Spaces = lists:duplicate(3, "&nbsp;"),
     string:join(Items, Spaces).
 
-put_repo_index (DocsRoot, Meta) ->
-    {_, Url}      = lists:keyfind(url, 1, Meta),
-    {_, Repo}     = lists:keyfind(target_path, 1, Meta),
-    {_, Tags}     = lists:keyfind(tags, 1, Meta),
-    {_, Branches} = lists:keyfind(branches, 1, Meta),
+put_repo_index (Conf, DocsRoot, Meta) ->
+    Url      = kf(Meta, url),
+    Repo     = kf(Meta, target_path),
+    Tags     = kf(Meta, tags),
+    Branches = kf(Meta, branches),
     HTML = "<h3 id=\"tags\">Tags</h3>"
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>"
         ++ "<br/>"
@@ -73,11 +74,12 @@ put_repo_index (DocsRoot, Meta) ->
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>",
     Args = [ {title, Repo}
            , {url, Url}
-           , {content, HTML} ],
+           , {content, HTML}
+           , {ga, kf(Conf,ga)} ],
     {ok, Data} = repo_dtl:render(Args),
     ok = file:write_file(filename:join(DocsRoot,"index.html"), Data).
 
-erldocs (DocsRoot, Clones) ->
+erldocs (Conf, DocsRoot, Clones) ->
     lists:foreach(
       fun ({Branch, Path}) ->
               DocsDest = filename:join(DocsRoot, Branch),
@@ -85,19 +87,27 @@ erldocs (DocsRoot, Clones) ->
               ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
               erldocs:main([ Path
                            , "-o", DocsDest
-                             |  [ "-I"++filename:join(Path, "include")]
-                             ++ [ "-I"++filename:join(Path, Inc)
-                                  || Inc <- filelib:wildcard(Path++"/deps/*/include")]
-                           ]),
+                           , "--ga", kf(Conf,ga) ]
+                           ++ [ "-I", filename:join(Path, "include")]
+                           ++ lists:flatmap(
+                                fun (Inc) ->
+                                        [ "-I", filename:join(Path, Inc)]
+                                end,
+                                filelib:wildcard(Path++"/deps/*/include"))
+                          ),
               %% rm git repo
               other_utils:rmrf(filename:dirname(Path)),
               %% rm repo/branch/.xml/
               other_utils:rmrf(filename:join(DocsDest, ".xml"))
       end, Clones).
 
+kf (Conf, Key) ->
+    {Key, Value} = lists:keyfind(Key, 1, Conf),
+    Value.
+
 duplicate_repo (git, RepoName, Meta, DestDir) ->
-    {_, Tags}     = lists:keyfind(tags, 1, Meta),
-    {_, Branches} = lists:keyfind(branches, 1, Meta),
+    Tags     = kf(Meta, tags),
+    Branches = kf(Meta, branches),
     lists:map(
       fun ({Commit, Title}) ->
               Name = make_name(RepoName, Commit, Title),
