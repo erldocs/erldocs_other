@@ -1,0 +1,13 @@
+{application
+, other
+, [ {description, "Generate HTML code for other.erldocs.com"}
+  , {vsn, "1"}
+  , {modules, [ other
+              ]}
+  , {registered, []}
+  , {applications, [ kernel
+                   , stdlib
+                   ]}
+  , {env, []}
+  ]
+}.
