@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>{{ title }} (Erldocs Documentation)</title>
+    <link href="{{ base }}erldocs.css" type="text/css" rel="stylesheet"/>
+    <link href="/search.xml" rel="search" type="application/opensearchdescription+xml" title="erldocs"/>
+
+    <script type="text/javascript">
+      var _gaq = _gaq || [];
+      _gaq.push(['_require', 'inpage_linkid', '//www.google-analytics.com/plugins/ga/inpage_linkid.js']);
+      _gaq.push(['_setAccount', 'UA-44246018-1']);
+      _gaq.push(['_setDomainName', 'erldocs.com']);
+      _gaq.push(['_trackPageview']);
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="content">
+      <div style="margin:0px; padding:10px 20px;">
+        <h1>{{ title }}</h1>
+        <hr/>
+        <h4><a style="text-decoration:none;" href="{{ url }}">{{ url }}</a></h4><br/>
+        <div>
+          {{ content }}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

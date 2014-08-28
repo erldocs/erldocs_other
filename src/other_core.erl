@@ -31,28 +31,41 @@ main (URL0, Destination0) ->
 
     ?LOG("Extracting meta information\n"),
     Meta = extract_info(Method, Url, TmpDir),
-
     ?LOG("Writing meta to ~p\n", [MetaFile]),
     to_file(MetaFile, Meta),
-    {_, Ts} = lists:keyfind(tags, 1, Meta),
-    {_, Bs} = lists:keyfind(branches, 1, Meta),
-    Branches = Ts ++ Bs,
 
     ?LOG("Preparing repo for docs generation\n"),
-    Clones = duplicate_repo(Method, RepoName, Branches, Dest),
+    Clones = duplicate_repo(Method, RepoName, Meta, Dest),
     other_utils:rmrf(TmpDir),
-    io:format("Clones = ~p\n", [Clones]),
 
     %%Probably `make` cloned repos (using shell's <> & sandbox)
 
     ?LOG("Generating erldocs.\n"),
     erldocs(DocsRoot, Clones),
-    put_repo_index(DocsRoot, Branches).
+    ?LOG("Erldocs finishing up.\n"),
+    put_repo_index(DocsRoot, Meta).
 
 %% Internals
 
-put_repo_index (DocsRoot, Branches) ->
-    pass.
+put_repo_index (DocsRoot, Meta) ->
+    {_, Url}      = lists:keyfind(url, 1, Meta),
+    {_, Repo}     = lists:keyfind(target_path, 1, Meta),
+    {_, Tags}     = lists:keyfind(tags, 1, Meta),
+    {_, Branches} = lists:keyfind(branches, 1, Meta),
+    F = fun ({_,B}) ->
+                "\t\t<p><a href=\""++B++"\">"++B++"</a><br/></p>\n"
+        end,
+    HTML = "<a name=\"tags\"><h3>Tags</h3></a>"
+        ++ lists:flatmap(F, Tags)
+        ++ "<br/><br/>"
+        ++ "<a name=\"branches\"><h3>Branches</h3></a>"
+        ++ lists:flatmap(F, Branches),
+    Args = [ {base, "master/"}
+           , {title, Repo}
+           , {url, Url}
+           , {content, HTML} ],
+    {ok, Data} = repo_dtl:render(Args),
+    ok = file:write_file(filename:join(DocsRoot,"index.html"), Data).
 
 erldocs (DocsRoot, Clones) ->
     lists:foreach(
@@ -69,7 +82,9 @@ erldocs (DocsRoot, Clones) ->
               other_utils:rmrf(filename:dirname(Path))
       end, Clones).
 
-duplicate_repo (git, RepoName, Branches, DestDir) ->
+duplicate_repo (git, RepoName, Meta, DestDir) ->
+    {_, Tags}     = lists:keyfind(tags, 1, Meta),
+    {_, Branches} = lists:keyfind(branches, 1, Meta),
     lists:map(
       fun ({Commit, Title}) ->
               Name = make_name(RepoName, Commit, Title),
@@ -79,7 +94,7 @@ duplicate_repo (git, RepoName, Branches, DestDir) ->
               other_utils:cp(DestDir, RepoName, TitledRepo),
               other_utils:git_changeto(TitledRepo, Commit),
               {Title, TitledRepo}
-      end, Branches).
+      end, Tags ++ Branches).
 
 mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
