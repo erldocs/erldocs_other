@@ -2,4 +2,4 @@ deps
 ebin
 
 erl.mk
-other
+erldocs_other

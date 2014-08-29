@@ -1,9 +1,9 @@
 %% Copyright © 2014 Pierre Fenoll ‹pierrefenoll@gmail.com›
 %% See LICENSE for licensing information.
 %% -*- coding: utf-8 -*-
--module(other_utils).
+-module(erldocs_other_utils).
 
-%% other_utils: shell utilities for other_core.
+%% erldocs_other_utils: shell utilities for erldocs_other_core.
 
 -export([ rmrf/1
         , cp/3

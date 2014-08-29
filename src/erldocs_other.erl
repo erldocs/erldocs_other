@@ -1,9 +1,9 @@
 %% Copyright © 2014 Pierre Fenoll ‹pierrefenoll@gmail.com›
 %% See LICENSE for licensing information.
 %% -*- coding: utf-8 -*-
--module(other).
+-module(erldocs_other).
 
-%% other: escript rendering a repos' erldocs.
+%% erldocs_other: escript rendering a repos' erldocs.
 
 -export([ main/1 ]).
 
@@ -42,7 +42,7 @@ parse ([URL        | Rest], Conf) ->
 
 
 run (Args) ->
-    try other_core:main(Args)
+    try erldocs_other_core:main(Args)
     catch Type:Error ->
             io:format("Error running ~p:\n~p\n~p\n",
                       [?MODULE, erlang:get_stacktrace(), {Type,Error}]),

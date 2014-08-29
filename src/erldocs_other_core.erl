@@ -1,9 +1,9 @@
 %% Copyright © 2014 Pierre Fenoll ‹pierrefenoll@gmail.com›
 %% See LICENSE for licensing information.
 %% -*- coding: utf-8 -*-
--module(other_core).
+-module(erldocs_other_core).
 
-%% other_core: main logic of the “other” module.
+%% erldocs_other_core: main logic of the erldocs_other module.
 
 -export([ main/1 ]).
 
@@ -37,7 +37,7 @@ main (Conf) ->
 
     ?LOG("Preparing repo for docs generation\n"),
     Clones = duplicate_repo(Method, RepoName, Meta, Dest),
-    other_utils:rmrf(TmpDir),
+    erldocs_other_utils:rmrf(TmpDir),
 
     %%Probably `make` cloned repos (using shell's <> & sandbox)
 
@@ -55,7 +55,7 @@ list_titles (DocsRoot, Titles) ->
                       {ok, _} ->
                           "<a href=\""++Branch++"\">"++Branch++"</a>";
                       {error, _} ->
-                          other_utils:rmrf(filename:dirname(ErldocsP)),
+                          erldocs_other_utils:rmrf(filename:dirname(ErldocsP)),
                           Branch
                   end
               end || {_,Branch} <- Titles ],
@@ -96,9 +96,9 @@ erldocs (Conf, DocsRoot, Clones) ->
                                 filelib:wildcard(Path++"/deps/*/include"))
                           ),
               %% rm git repo
-              other_utils:rmrf(filename:dirname(Path)),
+              erldocs_other_utils:rmrf(filename:dirname(Path)),
               %% rm repo/branch/.xml/
-              other_utils:rmrf(filename:join(DocsDest, ".xml"))
+              erldocs_other_utils:rmrf(filename:join(DocsDest, ".xml"))
       end, Clones).
 
 kf (Conf, Key) ->
@@ -114,8 +114,8 @@ duplicate_repo (git, RepoName, Meta, DestDir) ->
               TitledRepo = filename:join([DestDir, Name, RepoName]),
               mkdir(filename:join(DestDir, Name)),
               %% cd DestDir && cp -pr RepoName TitledRepo
-              other_utils:cp(DestDir, RepoName, TitledRepo),
-              other_utils:git_changeto(TitledRepo, Commit),
+              erldocs_other_utils:cp(DestDir, RepoName, TitledRepo),
+              erldocs_other_utils:git_changeto(TitledRepo, Commit),
               {Title, TitledRepo}
       end, Tags ++ Branches).
 
@@ -137,15 +137,15 @@ extract_info (git, Url, TmpDir) ->
     , {target_path, repo_local_path(Url)}
     , {url, Url}
     , {method, git}
-    , {branches, other_utils:git_branches(TmpDir)}
-    , {tags, other_utils:git_tags(TmpDir)}
+    , {branches, erldocs_other_utils:git_branches(TmpDir)}
+    , {tags, erldocs_other_utils:git_tags(TmpDir)}
     ];
 extract_info (Other, _, _) ->
     ?LOG("~p method not supported yet\n", [Other]),
     error.
 
 clone_repo (git, URL, TmpDir) ->
-    other_utils:git_clone(URL, TmpDir);
+    erldocs_other_utils:git_clone(URL, TmpDir);
 clone_repo (_, URL, _) ->  %% Git scheme will come here later…
     ?LOG("~s scheme or host not suported yet\n", [URL]),
     error.
