@@ -96,9 +96,7 @@ erldocs (Conf, DocsRoot, Clones) ->
                                 filelib:wildcard(Path++"/deps/*/include"))
                           ),
               %% rm git repo
-              erldocs_other_utils:rmrf(filename:dirname(Path)),
-              %% rm repo/branch/.xml/
-              erldocs_other_utils:rmrf(filename:join(DocsDest, ".xml"))
+              erldocs_other_utils:rmrf(filename:dirname(Path))
       end, Clones).
 
 kf (Conf, Key) ->
@@ -144,15 +142,17 @@ extract_info (Other, _, _) ->
     ?LOG("~p method not supported yet\n", [Other]),
     error.
 
-clone_repo (git, URL, TmpDir) ->
-    erldocs_other_utils:git_clone(URL, TmpDir);
-clone_repo (_, URL, _) ->  %% Git scheme will come here later…
-    ?LOG("~s scheme or host not suported yet\n", [URL]),
+clone_repo (git, Url, TmpDir) ->
+    erldocs_other_utils:git_clone(Url, TmpDir);
+clone_repo (_, Url, _) ->  %% Git scheme will come here later…
+    ?LOG("~s scheme or host not suported yet\n", [Url]),
     error.
 
 method ("https://github.com/"++_=Url) -> {git, Url};
 method ("https://bitbucket.org/"++_=Url) -> {git, Url};
-method (Url) -> {other, Url}.
+method (Url) ->
+    ?LOG("~s url not suported yet\n", [Url]),
+    error.
 
 to_file (Path, Data) ->
     Str = [io_lib:fwrite("~p.\n",[Datum]) || Datum <- Data],
