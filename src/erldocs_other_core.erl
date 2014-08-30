@@ -23,9 +23,9 @@ main (Conf) ->
     mkdir(Dest),
     TmpDir   = filename:join(Dest, RepoName),
     mkdir(TmpDir),
-    DocsRoot = filename:join(Dest, repo_local_path(Url)),
+    DocsRoot = filename:join(Dest, "repo"),
     mkdir(DocsRoot),
-    MetaFile = filename:join(DocsRoot, "meta"),
+    MetaFile = filename:join(Dest, "meta.terms"),
 
     ?LOG("Cloning repo ~p into ~p\n", [Url,TmpDir]),
     ok = clone_repo(Method, Url, TmpDir),
@@ -48,6 +48,15 @@ main (Conf) ->
 
 %% Internals
 
+html_index (DocsRoot, Meta) ->
+    Tags     = kf(Meta, tags),
+    Branches = kf(Meta, branches),
+    "<h3 id=\"tags\">Tags</h3>"
+        ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>"
+        ++ "<br/>"
+        ++ "\n\t<h3 id=\"branches\">Branches</h3>"
+        ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>".
+
 list_titles (DocsRoot, Titles) ->
     Items = [ begin
                   ErldocsP = filename:join([DocsRoot, Branch, "index.html"]),
@@ -63,21 +72,15 @@ list_titles (DocsRoot, Titles) ->
     string:join(Items, Spaces).
 
 put_repo_index (Conf, DocsRoot, Meta) ->
-    Url      = kf(Meta, url),
-    Repo     = kf(Meta, target_path),
-    Tags     = kf(Meta, tags),
-    Branches = kf(Meta, branches),
-    HTML = "<h3 id=\"tags\">Tags</h3>"
-        ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>"
-        ++ "<br/>"
-        ++ "\n\t<h3 id=\"branches\">Branches</h3>"
-        ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>",
-    Args = [ {title, Repo}
-           , {url, Url}
-           , {content, HTML}
-           , {ga, kf(Conf,ga)} ],
-    {ok, Data} = repo_dtl:render(Args),
-    ok = file:write_file(filename:join(DocsRoot,"index.html"), Data).
+    Args = [ {title,   kf(Meta, target_path)}
+           , {url,     kf(Meta, url)}
+           , {content, html_index(DocsRoot, Meta)}
+           , {base,    kf(Conf, base)}
+           , {ga,      kf(Conf, ga)} ],
+    {ok, HTML} = html_dtl:render(Args),
+    ok = file:write_file(filename:join(DocsRoot,"index.html"), HTML),
+    {ok, CSS}  = css_dtl:render([]),
+    ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
 erldocs (Conf, DocsRoot, Clones) ->
     lists:foreach(

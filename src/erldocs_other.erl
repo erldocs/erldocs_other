@@ -9,6 +9,7 @@
 
 -record(conf, { dest = ""
               , url  = ""
+              , base = "./"
               , ga = "UA-54292016-1" }).
 
 %% API
@@ -30,14 +31,17 @@ parse ([], Conf) ->
         true  -> main([]);
         false -> run([ {dest, Dest}
                      , {url,  URL}
+                     , {base, Conf#conf.base}
                      , {ga,   Conf#conf.ga} ])
     end;
 
-parse (["-o", Dest | Rest], Conf) ->
+parse (["-o",     Dest | Rest], Conf) ->
     parse(Rest, Conf#conf{dest = Dest});
-parse (["--ga", GA | Rest], Conf) ->
+parse (["--base", Base | Rest], Conf) ->
+    parse(Rest, Conf#conf{base = Base});
+parse (["--ga",     GA | Rest], Conf) ->
     parse(Rest, Conf#conf{ga   = GA  });
-parse ([URL        | Rest], Conf) ->
+parse ([URL            | Rest], Conf) ->
     parse(Rest, Conf#conf{url  = URL }).
 
 
