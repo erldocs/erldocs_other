@@ -106,18 +106,20 @@ erldocs (Conf, DocsRoot, Clones) ->
               DocsDest = filename:join(DocsRoot, Branch),
               mkdir(DocsDest),
               ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
-              erldocs:main([ Path
-                           , "-o", DocsDest
-                           , "--ga", kf(Conf,ga) ]
-                           ++ [ "-I", filename:join(Path, "include")]
-                           ++ lists:flatmap(
-                                fun (Inc) ->
-                                        [ "-I", filename:join(Path, Inc)]
-                                end,
-                                filelib:wildcard(Path++"/deps/*/include"))
-                          ),
-              %% rm git repo
-              ?u:rmrf(filename:dirname(Path))
+              Args = [ Path
+                     , "-o", DocsDest
+                     , "--ga", kf(Conf,ga) ]
+                  ++ [ "-I", filename:join(Path, "include")]
+                  ++ lists:flatmap(
+                       fun (Inc) ->
+                               [ "-I", filename:join(Path, Inc)]
+                       end,
+                       filelib:wildcard(Path++"/deps/*/include")),
+              case kf(Conf, base) of
+                  "/" -> erldocs:main(["--base", "/"] ++ Args);
+                  _   -> erldocs:main(                   Args)
+              end,
+              ?u:rmrf(filename:dirname(Path))  %% rm git repo
       end, Clones).
 
 kf (Conf, Key) ->
