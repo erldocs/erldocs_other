@@ -20,7 +20,7 @@ kf (){
 
 tmp=/tmp/other
 mkdir -p $tmp
-#rm -rf $tmp/*
+rm -rf $tmp/*
 
 $generator     \
     "$url"     \
