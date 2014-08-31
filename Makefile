@@ -12,6 +12,7 @@ include erl.mk
 distclean: clean clean-docs
 	$(if $(wildcard deps/ ), rm -rf deps/)
 	$(if $(wildcard erl.mk), rm erl.mk   )
+	$(if $(wildcard erldocs_other), rm erldocs_other)
 .PHONY: distclean
 
 ensure:
