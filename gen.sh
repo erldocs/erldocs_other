@@ -33,11 +33,12 @@ url=$(kf url $tmp/meta.terms)
 target_path=$(kf target_path $tmp/meta.terms)
 dest="$odir"/$target_path
 mkdir -pv "$dest"
-rm -rf    "$dest"/*
+rm -rf    "$dest" # Instead of `rm -rf "$dest"/*` => Can `stat` "$dest" for info!
+mkdir -pv "$dest"
 
 mv -v $tmp/meta.terms "$dest"/
 mv -v $tmp/repo/repo.css "$odir"/
-for decor in erldocs.css erldocs.js jquery.js; do
+for decor in 'erldocs.css' 'erldocs.js' 'jquery.js'; do
     path=$(find $tmp/repo -name $decor | head -n 1)
     [[ '' != "$path" ]] && mv -v "$path" "$odir"/
     find $tmp/repo -name $decor -delete
@@ -49,7 +50,8 @@ cd "$odir"
 find . -name meta.terms | cut -c3- | sed 's/...........$//' > index.html
 cd -
 
-echo "Just did gen $url over at $dest"
+echo    "Just gen'd $url over at $dest"
+echo -e "\t"http://other.erldocs.com/$target_path
 
 if [[ -d "$odir"/.git ]]; then
     cd "$odir" \
@@ -60,3 +62,4 @@ if [[ -d "$odir"/.git ]]; then
     cd -
 fi
 
+rm -rf $tmp

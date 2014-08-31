@@ -72,8 +72,12 @@ list_titles (DocsRoot, Titles) ->
                           Branch
                   end
               end || {_,Branch} <- Titles ],
-    Spaces = lists:duplicate(3, "&nbsp;"),
-    string:join(Items, Spaces).
+    case Items of
+        [] -> "(none)";
+        _  ->
+            Spaces = lists:duplicate(3, "&nbsp;"),
+            string:join(Items, Spaces)
+    end.
 
 put_repo_index (Conf, DocsRoot, Meta) ->
     Args = [ {title,   kf(Meta, target_path)}
