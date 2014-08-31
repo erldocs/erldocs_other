@@ -29,21 +29,23 @@ $generator     \
     2>&1 | tee $tmp/_
 [[ $? -ne 0 ]] && echo "$generator failed" && exit 3
 
+url=$(kf url $tmp/meta.terms)
 target_path=$(kf target_path $tmp/meta.terms)
 dest="$odir"/$target_path
 mkdir -pv "$dest"
 rm -rf    "$dest"/*
 
+mv -v $tmp/meta.terms "$odir"/
 mv -v $tmp/repo/repo.css "$odir"/
 for decor in erldocs.css erldocs.js jquery.js; do
     path=$(find $tmp/repo -name $decor | head -n 1)
     [[ '' != "$path" ]] && mv -v "$path" "$odir"/
     find $tmp/repo -name $decor -delete
 done
-find $tmp/repo -name '.xml' -delete
+find $tmp/repo -type d -name '.xml' -exec rm -r "{}" \;  2>/dev/null
 mv -v $tmp/repo/* "$dest"/
 
-url=$(kf url $tmp/meta.terms)
+
 echo "Just did gen $url over at $dest"
 
 if [[ -d "$odir"/.git ]]; then
