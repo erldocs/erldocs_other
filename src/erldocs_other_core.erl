@@ -204,18 +204,13 @@ url_assemble (github, [User,Proj]) ->
 url_assemble (bitbucket, [User,Proj]) ->
     "https://bitbucket.org/"++ User ++"/"++ rm_dotgit_suffix(Proj).
 
+rm_dotgit_suffix (Str) ->
+    filename:basename(Str, ".git").
+
 re (Pattern, Subject) ->
     re (Pattern, Subject, [{capture,all_but_first,list},unicode]).
 re (Pattern, Subject, Options) ->
     re:run(Subject, Pattern, Options).
-
-rm_dotgit_suffix (Str) ->
-    case lists:suffix(".git", Str) of
-        false -> Str;
-        true  ->
-            lists:reverse(
-              lists:reverse(Str) -- lists:reverse(".git"))
-    end.
 
 
 to_file (Path, Data) ->
