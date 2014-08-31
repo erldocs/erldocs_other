@@ -51,7 +51,7 @@ echo "Just did gen $url over at $dest"
 if [[ -d "$odir"/.git ]]; then
     cd "$odir" \
         && git pull origin gh-pages \
-        && git add -A "$dest" \
+        && git add -A $target_path \
         && git commit -m "Generated docs for $url" \
         && git push origin gh-pages
     cd -
