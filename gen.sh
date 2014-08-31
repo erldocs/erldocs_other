@@ -45,6 +45,9 @@ done
 find $tmp/repo -type d -name '.xml' -exec rm -r "{}" \;  2>/dev/null
 mv -v $tmp/repo/* "$dest"/
 
+cd "$odir"
+find . -name meta.terms | cut -c3- | sed 's/...........$//' > index.html
+cd -
 
 echo "Just did gen $url over at $dest"
 
@@ -52,7 +55,7 @@ if [[ -d "$odir"/.git ]]; then
     cd "$odir" \
         && git pull origin gh-pages \
         && git add -A $target_path \
-        && git commit -m "Generated docs for $url" \
+        && git commit -am "Generated docs for $url" \
         && git push origin gh-pages
     cd -
 fi
