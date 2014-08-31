@@ -170,47 +170,19 @@ clone_repo (_, Url, _) ->  %% Git scheme will come here later…
     error.
 
 
-method (Url) ->
-    case string:to_lower(Url) of
-        "http:" ++Rest -> url_extract(href, Rest);
-        "https:"++Rest -> url_extract(href, Rest);
-        "git@"++Rest ->   url_extract(git, Rest)
+method (URL0) ->
+    Url = string:to_lower(URL0),
+    case re:run(Url, "(github.com|bitbucket.org)[:/]([^:/]+)/([^/]+)",
+                [{capture,all_but_first,list}, unicode]) of
+        {match, [Site,User,Name]} ->
+            {git, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
+        nomatch ->
+            ?LOG("~s scheme or host not suported yet\n", [Url]),
+            error
     end.
 
-url_extract (href, Rest) ->
-    case re("^//github.com/([^/]+)/([^/]+)", Rest) of
-        {match, [User,Proj]} ->
-            {git, url_assemble(github, [User,Proj])};
-        nomatch ->
-            case re("^//([^/@]+@)?bitbucket.org/([^/]+)/([^/]+)", Rest) of
-                {match, [_,User,Proj]} ->
-                    {git, url_assemble(bitbucket, [User,Proj])}
-            end
-    end;
-
-url_extract (git, Rest) ->
-    case re("^github.com:([^:/]+)/([^/]+)", Rest) of
-        {match, [User,Proj]} ->
-            {git, url_assemble(github, [User,Proj])};
-        nomatch ->
-            case re("^bitbucket.org:([^:/]+)/([^/]+)", Rest) of
-                {match, [User,Proj]} ->
-                    {git, url_assemble(bitbucket, [User,Proj])}
-            end
-    end.
-
-url_assemble (github, [User,Proj]) ->
-    "https://github.com/"++ User ++"/"++ rm_dotgit_suffix(Proj);
-url_assemble (bitbucket, [User,Proj]) ->
-    "https://bitbucket.org/"++ User ++"/"++ rm_dotgit_suffix(Proj).
-
-rm_dotgit_suffix (Str) ->
+trim_dotgit (Str) ->
     filename:basename(Str, ".git").
-
-re (Pattern, Subject) ->
-    re (Pattern, Subject, [{capture,all_but_first,list},unicode]).
-re (Pattern, Subject, Options) ->
-    re:run(Subject, Pattern, Options).
 
 
 to_file (Path, Data) ->
