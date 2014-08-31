@@ -37,17 +37,31 @@ main (Conf) ->
     to_file(MetaFile, Meta),
 
     ?LOG("Preparing repo for docs generation\n"),
-    Clones = duplicate_repo(Method, RepoName, Meta, Dest),
-    ?u:rmrf(TmpDir),
+    Tags     = kf(Meta, tags),
+    Branches = kf(Meta, branches),
+    TBs = Tags ++ Branches,
+    main_cont(TBs, Method, RepoName, TmpDir,
+              Conf, Meta, MetaFile, DocsRoot, Dest, []).
 
-    %%Probably `make` cloned repos (using shell's <> & sandbox)
+main_cont ([TB|TBs], Method, RepoName, TmpDir,
+           Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
+    Clone = duplicate_repo(Method, TB, RepoName, Dest),
+
+    %TODO `make` cloned repo (using shell's redirection & sandbox)
+    %if rebar.config exists, `rebar get-deps compile`.
+    %if .gitmodules exists, get submodules.
 
     ?LOG("Discovering other repos\n"),
-    repo_discovery(MetaFile, Clones),
+    Treasure = repo_discovery(Clone),
 
-    ?LOG("Generating erldocs:\n"),
-    erldocs(Conf, DocsRoot, Clones),
+    erldocs(Conf, DocsRoot, Clone),
+    main_cont(TBs, Method, RepoName, TmpDir,
+              Conf, Meta, MetaFile, DocsRoot, Dest, [Treasure|Acc]);
+main_cont ([], _, _, TmpDir,
+           Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
     ?LOG("Erldocs finishing up.\n"),
+    to_file(MetaFile, [{discover,Treasures}], [append]),
+    ?u:rmrf(TmpDir),
     put_repo_index(Conf, DocsRoot, Meta).
 
 %% Internals
@@ -90,57 +104,45 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     {ok, CSS}  = css_dtl:render([]),
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
-repo_discovery (Metafile, Clones) ->
-    Dumps = lists:map(
-              fun ({Title, RepoPath}) ->
-                      Found = ?u:find_files(RepoPath, [ "rebar.config"
-                                                      , "Makefile"
-                                                      , ".gitmodules" ]),
-                      {Title, [ begin
-                                    FilePath = filename:join(RepoPath, File),
-                                    {ok, Bin} = file:read_file(FilePath),
-                                    {File, Bin}
-                                end || File <- Found ]}
-              end, Clones),
-    to_file(Metafile, [{discover,Dumps}], [append]).
+repo_discovery ({Title, RepoPath}) ->
+    Found = ?u:find_files(RepoPath, [ "rebar.config"
+                                    , "Makefile"
+                                    , ".gitmodules" ]),
+    {Title, [ begin
+                  FilePath = filename:join(RepoPath, File),
+                  {ok, Bin} = file:read_file(FilePath),
+                  {File, Bin}
+              end || File <- Found ]}.
 
-erldocs (Conf, DocsRoot, Clones) ->
-    lists:foreach(
-      fun ({Branch, Path}) ->
-              DocsDest = filename:join(DocsRoot, Branch),
-              mkdir(DocsDest),
-              ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
-              Args = [ Path
-                     , "-o", DocsDest
-                     , "--base", kf(Conf,base)
-                     , "--ga",   kf(Conf,ga) ]
-                  ++ [ "-I", filename:join(Path, "include")]
-                  ++ lists:flatmap(
-                       fun (Inc) ->
-                               [ "-I", filename:join(Path, Inc)]
-                       end,
-                       filelib:wildcard(Path++"/deps/*/include")),
-              erldocs:main(Args),
-              ?u:rmrf(filename:dirname(Path))  %% rm git repo
-      end, Clones).
+erldocs (Conf, DocsRoot, {Branch,Path}) ->
+    DocsDest = filename:join(DocsRoot, Branch),
+    mkdir(DocsDest),
+    ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
+    Args = [ Path
+           , "-o", DocsDest
+           , "--base", kf(Conf,base)
+           , "--ga",   kf(Conf,ga) ]
+        ++ [ "-I", filename:join(Path, "include")]
+        ++ lists:flatmap(
+             fun (Inc) ->
+                     [ "-I", filename:join(Path, Inc)]
+             end,
+             filelib:wildcard(Path++"/deps/*/include")),
+    erldocs:main(Args),
+    ?u:rmrf(filename:dirname(Path)).  %% rm git repo
 
 kf (Conf, Key) ->
     {Key, Value} = lists:keyfind(Key, 1, Conf),
     Value.
 
-duplicate_repo (git, RepoName, Meta, DestDir) ->
-    Tags     = kf(Meta, tags),
-    Branches = kf(Meta, branches),
-    lists:map(
-      fun ({Commit, Title}) ->
-              Name = make_name(RepoName, Commit, Title),
-              TitledRepo = filename:join([DestDir, Name, RepoName]),
-              mkdir(filename:join(DestDir, Name)),
-              %% cd DestDir && cp -pr RepoName TitledRepo
-              ?u:cp(DestDir, RepoName, TitledRepo),
-              ?u:git_changeto(TitledRepo, Commit),
-              {Title, TitledRepo}
-      end, Tags ++ Branches).
+duplicate_repo (git, {Commit,Title}, RepoName, DestDir) ->
+    Name = make_name(RepoName, Commit, Title),
+    TitledRepo = filename:join([DestDir, Name, RepoName]),
+    mkdir(filename:join(DestDir, Name)),
+    %% cd DestDir && cp -pr RepoName TitledRepo
+    ?u:cp(DestDir, RepoName, TitledRepo),
+    ?u:git_changeto(TitledRepo, Commit),
+    {Title, TitledRepo}.
 
 mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
