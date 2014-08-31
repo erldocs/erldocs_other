@@ -17,7 +17,7 @@
 main (Conf) ->
     URL0         = kf(Conf, url),
     Destination0 = kf(Conf, dest),
-    {Method, Url} = method(string:to_lower(URL0)),
+    {Method, Url} = method(URL0),
     RepoName = repo_name(Url),
 
     Dest     = filename:absname(Destination0),
@@ -169,11 +169,54 @@ clone_repo (_, Url, _) ->  %% Git scheme will come here later…
     ?LOG("~s scheme or host not suported yet\n", [Url]),
     error.
 
-method ("https://github.com/"++_=Url) -> {git, Url};
-method ("https://bitbucket.org/"++_=Url) -> {git, Url};
+
 method (Url) ->
-    ?LOG("~s url not suported yet\n", [Url]),
-    error.
+    case string:to_lower(Url) of
+        "http:" ++Rest -> url_extract(href, Rest);
+        "https:"++Rest -> url_extract(href, Rest);
+        "git@"++Rest ->   url_extract(git, Rest)
+    end.
+
+url_extract (href, Rest) ->
+    case re("^//github.com/([^/]+)/([^/]+)", Rest) of
+        {match, [User,Proj]} ->
+            {git, url_assemble(github, [User,Proj])};
+        nomatch ->
+            case re("^//([^/@]+@)?bitbucket.org/([^/]+)/([^/]+)", Rest) of
+                {match, [_,User,Proj]} ->
+                    {git, url_assemble(bitbucket, [User,Proj])}
+            end
+    end;
+
+url_extract (git, Rest) ->
+    case re("^github.com:([^:/]+)/([^/]+)", Rest) of
+        {match, [User,Proj]} ->
+            {git, url_assemble(github, [User,Proj])};
+        nomatch ->
+            case re("^bitbucket.org:([^:/]+)/([^/]+)", Rest) of
+                {match, [User,Proj]} ->
+                    {git, url_assemble(bitbucket, [User,Proj])}
+            end
+    end.
+
+url_assemble (github, [User,Proj]) ->
+    "https://github.com/"++ User ++"/"++ rm_dotgit_suffix(Proj);
+url_assemble (bitbucket, [User,Proj]) ->
+    "https://bitbucket.org/"++ User ++"/"++ rm_dotgit_suffix(Proj).
+
+re (Pattern, Subject) ->
+    re (Pattern, Subject, [{capture,all_but_first,list},unicode]).
+re (Pattern, Subject, Options) ->
+    re:run(Subject, Pattern, Options).
+
+rm_dotgit_suffix (Str) ->
+    case lists:suffix(".git", Str) of
+        false -> Str;
+        true  ->
+            lists:reverse(
+              lists:reverse(Str) -- lists:reverse(".git"))
+    end.
+
 
 to_file (Path, Data) ->
     to_file (Path, Data, []).
