@@ -7,6 +7,7 @@
 
 -export([ rmrf/1
         , cp/3
+        , find_files/2
 
         , git_clone/2
         , git_branches/1
@@ -14,20 +15,27 @@
         , git_changeto/2
         ]).
 
+-define(ShortCmdTimeout, 5*1000).
 
 %% API
 
 rmrf (Dir) ->
-    {0,_} = sh("rm -rf '~s'", [Dir]),
+    {0,_} = sh("rm -rf '~s'", [Dir], ?ShortCmdTimeout),
     ok.
 
 cp (ChDir, Src, Dst) ->
     {0,_} = sh(ChDir, "cp -pr '~s' '~s'", [Src,Dst]),
     ok.
 
+find_files (Dir, Names) ->
+    Tildes = lists:duplicate(length(Names), "~s"),
+    Quoted = string:join(Tildes, "' -or -name '"),
+    {0,R} = sh(Dir, "find . -name '"++ Quoted ++"'", Names),
+    [Path || {"./"++Path} <- R].
 
 git_clone (Url, Dir) ->
-    {0,_} = shh("git clone --no-checkout -- '~s' '~s'", [Url,Dir]),
+    {0,_} = sh("git clone --no-checkout -- '~s' '~s'  >/dev/null 2>&1",
+               [Url,Dir], infinity),
     ok.
 
 git_branches (RepoDir) ->
@@ -52,19 +60,20 @@ git_changeto (RepoDir, Commit) ->
 shorten (Commit) ->
     lists:sublist(Commit, 7).
 
-shh (Fmt, Data) ->
-    sh(Fmt++" >/dev/null 2>&1", Data).
+sh (Fmt, Data, Timeout)
+  when is_atom(Timeout); is_integer(Timeout) ->
+    Cmd = lists:flatten(io_lib:format(Fmt, Data)),
+    run(Cmd, Timeout);
 
 sh (Dir, Fmt, Data) ->
+    sh (Dir, Fmt, Data, ?ShortCmdTimeout).
+
+sh (Dir, Fmt, Data, Timeout) ->
     {ok, PreviousDir} = file:get_cwd(),
     ok = file:set_cwd(Dir),
-    Res = sh(Fmt, Data),
+    Res = sh(Fmt, Data, Timeout),
     ok = file:set_cwd(PreviousDir),
     Res.
-
-sh (Fmt, Data) ->
-    Cmd = lists:flatten(io_lib:format(Fmt, Data)),
-    run(Cmd, 30*1000).
 
 run (Cmd, Timeout) ->
     Port = open_port({spawn,Cmd}, [exit_status]),

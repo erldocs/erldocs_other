@@ -10,6 +10,7 @@
 -define(LOG(Str, Args), io:format(" :: "++ Str, Args)).
 -define(LOG(Str),       io:format(" :: "++ Str)).
 
+-define(u, erldocs_other_utils).
 
 %% API
 
@@ -37,11 +38,14 @@ main (Conf) ->
 
     ?LOG("Preparing repo for docs generation\n"),
     Clones = duplicate_repo(Method, RepoName, Meta, Dest),
-    erldocs_other_utils:rmrf(TmpDir),
+    ?u:rmrf(TmpDir),
 
     %%Probably `make` cloned repos (using shell's <> & sandbox)
 
-    ?LOG("Generating erldocs.\n"),
+    ?LOG("Discovering other repos\n"),
+    repo_discovery(MetaFile, Clones),
+
+    ?LOG("Generating erldocs:\n"),
     erldocs(Conf, DocsRoot, Clones),
     ?LOG("Erldocs finishing up.\n"),
     put_repo_index(Conf, DocsRoot, Meta).
@@ -64,7 +68,7 @@ list_titles (DocsRoot, Titles) ->
                       {ok, _} ->
                           "<a href=\""++Branch++"\">"++Branch++"</a>";
                       {error, _} ->
-                          erldocs_other_utils:rmrf(filename:dirname(ErldocsP)),
+                          ?u:rmrf(filename:dirname(ErldocsP)),
                           Branch
                   end
               end || {_,Branch} <- Titles ],
@@ -81,6 +85,20 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     ok = file:write_file(filename:join(DocsRoot,"index.html"), HTML),
     {ok, CSS}  = css_dtl:render([]),
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
+
+repo_discovery (Metafile, Clones) ->
+    Dumps = lists:map(
+              fun ({Title, RepoPath}) ->
+                      Found = ?u:find_files(RepoPath, [ "rebar.config"
+                                                      , "Makefile"
+                                                      , ".gitmodules" ]),
+                      {Title, [ begin
+                                    FilePath = filename:join(RepoPath, File),
+                                    {ok, Bin} = file:read_file(FilePath),
+                                    {File, Bin}
+                                end || File <- Found ]}
+              end, Clones),
+    to_file(Metafile, [{discover,Dumps}], [append]).
 
 erldocs (Conf, DocsRoot, Clones) ->
     lists:foreach(
@@ -99,7 +117,7 @@ erldocs (Conf, DocsRoot, Clones) ->
                                 filelib:wildcard(Path++"/deps/*/include"))
                           ),
               %% rm git repo
-              erldocs_other_utils:rmrf(filename:dirname(Path))
+              ?u:rmrf(filename:dirname(Path))
       end, Clones).
 
 kf (Conf, Key) ->
@@ -115,8 +133,8 @@ duplicate_repo (git, RepoName, Meta, DestDir) ->
               TitledRepo = filename:join([DestDir, Name, RepoName]),
               mkdir(filename:join(DestDir, Name)),
               %% cd DestDir && cp -pr RepoName TitledRepo
-              erldocs_other_utils:cp(DestDir, RepoName, TitledRepo),
-              erldocs_other_utils:git_changeto(TitledRepo, Commit),
+              ?u:cp(DestDir, RepoName, TitledRepo),
+              ?u:git_changeto(TitledRepo, Commit),
               {Title, TitledRepo}
       end, Tags ++ Branches).
 
@@ -138,15 +156,15 @@ extract_info (git, Url, TmpDir) ->
     , {target_path, repo_local_path(Url)}
     , {url, Url}
     , {method, git}
-    , {branches, erldocs_other_utils:git_branches(TmpDir)}
-    , {tags, erldocs_other_utils:git_tags(TmpDir)}
+    , {branches, ?u:git_branches(TmpDir)}
+    , {tags, ?u:git_tags(TmpDir)}
     ];
 extract_info (Other, _, _) ->
     ?LOG("~p method not supported yet\n", [Other]),
     error.
 
 clone_repo (git, Url, TmpDir) ->
-    erldocs_other_utils:git_clone(Url, TmpDir);
+    ?u:git_clone(Url, TmpDir);
 clone_repo (_, Url, _) ->  %% Git scheme will come here later…
     ?LOG("~s scheme or host not suported yet\n", [Url]),
     error.
@@ -158,7 +176,9 @@ method (Url) ->
     error.
 
 to_file (Path, Data) ->
+    to_file (Path, Data, []).
+to_file (Path, Data, Options) ->
     Str = [io_lib:fwrite("~p.\n",[Datum]) || Datum <- Data],
-    file:write_file(Path, Str).
+    file:write_file(Path, Str, Options).
 
 %% End of Module.
