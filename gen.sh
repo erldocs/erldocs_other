@@ -27,7 +27,9 @@ $generator     \
     -o $tmp    \
     --base '/' \
     2>&1 | tee $tmp/_
-[[ $? -ne 0 ]] && echo "$generator failed" && exit 3
+
+err_code=${PIPESTATUS[0]}
+[[ $err_code -ne 0 ]] && echo "$generator failed" && exit 3
 
 url=$(kf url $tmp/meta.terms)
 target_path=$(kf target_path $tmp/meta.terms)
@@ -36,6 +38,7 @@ mkdir -pv "$dest"
 rm -rf    "$dest" # Instead of `rm -rf "$dest"/*` => Can `stat` "$dest" for info!
 mkdir -pv "$dest"
 
+mv -v $tmp/_ "$dest"/
 mv -v $tmp/meta.terms "$dest"/
 mv -v $tmp/repo/repo.css "$odir"/
 for decor in 'erldocs.css' 'erldocs.js' 'jquery.js'; do
