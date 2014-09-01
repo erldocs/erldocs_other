@@ -13,6 +13,11 @@
         , git_branches/1
         , git_tags/1
         , git_changeto/2
+        , git_get_submodules/1
+        , delete_submodules/1
+
+        , rebar_get_deps/1
+        , rebar_delete_deps/1
         ]).
 
 -define(ShortCmdTimeout, 5*1000).
@@ -53,6 +58,27 @@ git_tags (RepoDir) ->
 
 git_changeto (RepoDir, Commit) ->
     {0,_} = sh(RepoDir, "git checkout --quiet '~s'", [Commit]),
+    ok.
+
+git_get_submodules (RepoDir) ->
+    %% (Does nothing if no .gitmodules exists)
+    {0,_} = sh(RepoDir,
+               "git submodule update --init --recursive  >/dev/null 2>&1",
+               [], infinity),
+    ok.
+
+delete_submodules (RepoDir) -> %No git command as of yet!
+    %%cat gitmodules.txt | `which grep` -P '^\s*path\s+=' | sed 's/\s\*//' | cut -d ' ' -f 3
+    %%string:tokens("  \tpath = .gitmodule/raintpl", "\t ").
+    impl.
+
+rebar_get_deps (RepoDir) -> %mind rebar hooks!!
+    %% (Does nothing if no rebar.config exists)
+    %{0,_} = sh(RepoDir, "rebar get-deps  >/dev/null 2>&1", [], infinity),
+    ok.
+
+rebar_delete_deps (RepoDir) -> %mind rebar hooks!!
+    %{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null 2>&1"),
     ok.
 
 %% Internals

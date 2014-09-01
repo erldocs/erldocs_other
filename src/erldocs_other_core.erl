@@ -43,18 +43,20 @@ main (Conf) ->
     main_cont(TBs, Method, RepoName, TmpDir,
               Conf, Meta, MetaFile, DocsRoot, Dest, []).
 
-main_cont ([TB|TBs], Method, RepoName, TmpDir,
+main_cont ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
            Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
-    Clone = duplicate_repo(Method, TB, RepoName, Dest),
+    TitledPath = fetch_repo(Method, {Commit,Title}, RepoName, Dest),
 
+    get_deps(TitledPath),
     %TODO `make` cloned repo (using shell's redirection & sandbox)
-    %if rebar.config exists, `rebar get-deps compile`.
-    %if .gitmodules exists, get submodules.
+
+    erldocs(Conf, DocsRoot, Title, TitledPath),
 
     ?LOG("Discovering other repos\n"),
-    Treasure = repo_discovery(Clone),
+    del_deps(TitledPath),
+    Treasure = repo_discovery(Title, TitledPath),
 
-    erldocs(Conf, DocsRoot, Clone),
+    ?u:rmrf(filename:dirname(TitledPath)),  %% rm titled repo
     main_cont(TBs, Method, RepoName, TmpDir,
               Conf, Meta, MetaFile, DocsRoot, Dest, [Treasure|Acc]);
 main_cont ([], _, _, TmpDir,
@@ -77,12 +79,11 @@ html_index (DocsRoot, Meta) ->
 
 list_titles (DocsRoot, Titles) ->
     Items = [ begin
-                  ErldocsP = filename:join([DocsRoot, Branch, "index.html"]),
-                  case file:read_file_info(ErldocsP) of
-                      {ok, _} ->
+                  case path_exists([DocsRoot, Branch, "index.html"]) of
+                      true  ->
                           "<a href=\""++Branch++"\">"++Branch++"</a>";
-                      {error, _} ->
-                          ?u:rmrf(filename:dirname(ErldocsP)),
+                      false ->
+                          ?u:rmrf(filename:join(DocsRoot, Branch)),
                           Branch
                   end
               end || {_,Branch} <- Titles ],
@@ -104,7 +105,7 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     {ok, CSS}  = css_dtl:render([]),
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
-repo_discovery ({Title, RepoPath}) ->
+repo_discovery (Title, RepoPath) ->
     Found = ?u:find_files(RepoPath, [ "rebar.config"
                                     , "Makefile"
                                     , ".gitmodules" ]),
@@ -114,35 +115,56 @@ repo_discovery ({Title, RepoPath}) ->
                   {File, Bin}
               end || File <- Found ]}.
 
-erldocs (Conf, DocsRoot, {Branch,Path}) ->
+erldocs (Conf, DocsRoot, Branch, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
-    mkdir(DocsDest),
     ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
-    Args = [ Path
+    mkdir(DocsDest),
+    Args = [ Path %Add Path/* & Path/apps/* ?
            , "-o", DocsDest
            , "--base", kf(Conf,base)
-           , "--ga",   kf(Conf,ga) ]
-        ++ [ "-I", filename:join(Path, "include")]
-        ++ lists:flatmap(
-             fun (Inc) ->
-                     [ "-I", filename:join(Path, Inc)]
-             end,
-             filelib:wildcard(Path++"/deps/*/include")),
-    erldocs:main(Args),
-    ?u:rmrf(filename:dirname(Path)).  %% rm git repo
+           , "--ga",   kf(Conf,ga)
+           ] ++ lists:flatmap(fun (Dir) -> ["-I", Dir] end,
+                              find_dirs(Path)),
+    erldocs:main(Args).
+
+find_dirs (Path) ->
+    AccDirs = fun (File, Acc) ->
+                      [filename:dirname(File)|Acc]
+              end,
+    Dirs = filelib:fold_files(Path, ".+", true, AccDirs, []),
+    lists:usort(Dirs).
 
 kf (Conf, Key) ->
     {Key, Value} = lists:keyfind(Key, 1, Conf),
     Value.
 
-duplicate_repo (git, {Commit,Title}, RepoName, DestDir) ->
+fetch_repo (git, {Commit,Title}, RepoName, DestDir) ->
     Name = make_name(RepoName, Commit, Title),
-    TitledRepo = filename:join([DestDir, Name, RepoName]),
+    TitledPath = filename:join([DestDir, Name, RepoName]),
     mkdir(filename:join(DestDir, Name)),
-    %% cd DestDir && cp -pr RepoName TitledRepo
-    ?u:cp(DestDir, RepoName, TitledRepo),
-    ?u:git_changeto(TitledRepo, Commit),
-    {Title, TitledRepo}.
+    %% cd DestDir && cp -pr RepoName TitledPath
+    ?u:cp(DestDir, RepoName, TitledPath),
+    ?u:git_changeto(TitledPath, Commit),
+    TitledPath.
+
+get_deps (Path) ->
+    ?u:rebar_get_deps(Path),
+    ?u:git_get_submodules(Path).
+
+del_deps (Path) ->
+    case path_exists([Path, "rebar.config"]) of
+        true  -> ?u:rebar_delete_deps(Path);
+        false -> ok
+    end,
+    case path_exists([Path, ".gitmodules"]) of
+        true  -> ?u:delete_submodules(Path);
+        false -> ok
+    end,
+    ?u:rmrf(filename:join(Path, "deps")).
+
+path_exists (PathToJoin) ->
+    Path = filename:join(PathToJoin),
+    filelib:is_file(Path).
 
 mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
