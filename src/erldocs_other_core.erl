@@ -12,6 +12,9 @@
 
 -define(u, erldocs_other_utils).
 
+-export([ to_file/2
+        ]).
+
 %% API
 
 main (Conf) ->
@@ -45,15 +48,17 @@ main (Conf) ->
 
 main_cont ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
            Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
-    TitledPath = fetch_repo(Method, {Commit,Title}, RepoName, Dest),
+    TitledPath = copy_repo(Method, {Commit,Title}, RepoName, Dest),
 
+    ?LOG("Getting dependencies\n"),
     get_deps(TitledPath),
-    %TODO `make` cloned repo (using shell's redirection & sandbox)
+    %%FIXME `make` cloned repo (using shell's redirection & sandbox)
 
+    %%FIXME think about rmrf TitlePath/.git/, deps/*/.git/ & submodules'.
     erldocs(Conf, DocsRoot, Title, TitledPath),
 
     ?LOG("Discovering other repos\n"),
-    del_deps(TitledPath),
+    %%del_deps(TitledPath),
     Treasure = repo_discovery(Title, TitledPath),
 
     ?u:rmrf(filename:dirname(TitledPath)),  %% rm titled repo
@@ -121,25 +126,25 @@ erldocs (Conf, DocsRoot, Branch, Path) ->
     ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
     mkdir(DocsDest),
     Args = [ Path %Add Path/* & Path/apps/* ?
-           , "-o", DocsDest
+           , "-o",     DocsDest
            , "--base", kf(Conf,base)
            , "--ga",   kf(Conf,ga)
            ] ++ lists:flatmap(fun (Dir) -> ["-I", Dir] end,
-                              find_dirs(Path)),
+                              find_dirs("\\.hrl$", Path)),
     erldocs:main(Args).
 
-find_dirs (Path) ->
+find_dirs (FilePattern, Path) ->
     AccDirs = fun (File, Acc) ->
                       [filename:dirname(File)|Acc]
               end,
-    Dirs = filelib:fold_files(Path, ".+", true, AccDirs, []),
+    Dirs = filelib:fold_files(Path, FilePattern, true, AccDirs, []),
     lists:usort(Dirs).
 
 kf (Conf, Key) ->
     {Key, Value} = lists:keyfind(Key, 1, Conf),
     Value.
 
-fetch_repo (git, {Commit,Title}, RepoName, DestDir) ->
+copy_repo (git, {Commit,Title}, RepoName, DestDir) ->
     Name = make_name(RepoName, Commit, Title),
     TitledPath = filename:join([DestDir, Name, RepoName]),
     mkdir(filename:join(DestDir, Name)),
@@ -149,8 +154,11 @@ fetch_repo (git, {Commit,Title}, RepoName, DestDir) ->
     TitledPath.
 
 get_deps (Path) ->
-    ?u:rebar_get_deps(Path),
-    ?u:git_get_submodules(Path).
+    ?u:git_get_submodules(Path),
+    case path_exists([Path, "rebar.config"]) of
+        true  -> ?u:rebar_get_deps(Path);
+        false -> ok
+    end.
 
 del_deps (Path) ->
     case path_exists([Path, "rebar.config"]) of

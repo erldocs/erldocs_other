@@ -25,7 +25,7 @@
 %% API
 
 rmrf (Dir) ->
-    chk(sh("rm -rf '~s'", [Dir], ?ShortCmdTimeout)).
+    chk(sh("rm -rf '~s'", [Dir])).
 
 cp (ChDir, Src, Dst) ->
     chk(sh(ChDir, "cp -pr '~s' '~s'", [Src,Dst])).
@@ -67,13 +67,35 @@ delete_submodules (RepoDir) -> %No git command as of yet!
     %%string:tokens("  \tpath = .gitmodule/raintpl", "\t ").
     impl.%%FIXME
 
-rebar_get_deps (RepoDir) -> %mind rebar hooks!!
-    %% (Does nothing if no rebar.config exists)
-    %{0,_} = sh(RepoDir, "rebar get-deps  >/dev/null 2>&1", [], infinity),
-    ok.%%FIXME
+%%FIXME git config --get remote.origin.url (for each remote)
+
+rebar_get_deps (RepoDir) ->
+    %% Gets rid of rebar hooks (potential code execution);
+    %%   copies (only) deps from rebar.config to ../rebar_deps.
+    OnlyReDepsFile = "rebar_deps",
+    TitledDir = filename:dirname(RepoDir),
+    ReFile    = filename:join(RepoDir, "rebar.config"),
+    NewReFile = filename:join(TitledDir, OnlyReDepsFile),
+    {ok, ReConf} = file:consult(ReFile),
+    case lists:keyfind(deps, 1, ReConf) of
+        false ->
+            chk(sh("touch '~s'", [NewReFile]));
+        {deps, _}=Deps ->
+            erldocs_other_core:to_file(NewReFile, [Deps])
+    end,
+    case sh(RepoDir, "rebar --config '~s' get-deps  >/dev/null 2>&1",
+            [NewReFile], infinity) of
+        {0, _} ->
+            {0,Ls} = sh(RepoDir, "ls -1 deps/", []),
+            io:format("~p\n",[[Dep || {Dep} <- Ls]]);
+        {_, _} ->
+            io:format("[]\n"),
+            error
+    end.
 
 rebar_delete_deps (RepoDir) -> %mind rebar hooks!!
-    %{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null 2>&1"),
+    %% rebar allows you to fetch deps into a dir ≠ deps/
+    %%{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null 2>&1"),
     ok.%%FIXME
 
 %% Internals
@@ -86,6 +108,9 @@ chk (ShCall) ->
 
 shorten (Commit) ->
     lists:sublist(Commit, 7).
+
+sh (Fmt, Data) ->
+    sh (Fmt, Data, ?ShortCmdTimeout).
 
 sh (Fmt, Data, Timeout)
   when is_atom(Timeout); is_integer(Timeout) ->

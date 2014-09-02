@@ -48,7 +48,7 @@ parse ([URL            | Rest], Conf) ->
 run (Args) ->
     try erldocs_other_core:main(Args)
     catch Type:Error ->
-            io:format("Error running ~p:\n~p\n~p\n",
+            io:format("Error running ~p:\n\t~p\n~p\n",
                       [?MODULE, erlang:get_stacktrace(), {Type,Error}]),
             halt(2)
     end.
