@@ -25,12 +25,10 @@
 %% API
 
 rmrf (Dir) ->
-    {0,_} = sh("rm -rf '~s'", [Dir], ?ShortCmdTimeout),
-    ok.
+    chk(sh("rm -rf '~s'", [Dir], ?ShortCmdTimeout)).
 
 cp (ChDir, Src, Dst) ->
-    {0,_} = sh(ChDir, "cp -pr '~s' '~s'", [Src,Dst]),
-    ok.
+    chk(sh(ChDir, "cp -pr '~s' '~s'", [Src,Dst])).
 
 find_files (Dir, Names) ->
     Tildes = lists:duplicate(length(Names), "~s"),
@@ -39,9 +37,8 @@ find_files (Dir, Names) ->
     [Path || {"./"++Path} <- R].
 
 git_clone (Url, Dir) ->
-    {0,_} = sh("git clone --no-checkout -- '~s' '~s'  >/dev/null 2>&1",
-               [Url,Dir], infinity),
-    ok.
+    chk(sh("git clone --no-checkout -- '~s' '~s'  >/dev/null 2>&1",
+           [Url,Dir], infinity)).
 
 git_branches (RepoDir) ->
     {0,Branches} = sh(RepoDir, "git ls-remote --heads origin", []),
@@ -57,31 +54,35 @@ git_tags (RepoDir) ->
     [{shorten(Commit),Tag} || {Tag,Commit} <- Tags].
 
 git_changeto (RepoDir, Commit) ->
-    {0,_} = sh(RepoDir, "git checkout --quiet '~s'", [Commit]),
-    ok.
+    chk(sh(RepoDir, "git checkout --quiet '~s'", [Commit])).
 
 git_get_submodules (RepoDir) ->
     %% (Does nothing if no .gitmodules exists)
-    {0,_} = sh(RepoDir,
-               "git submodule update --init --recursive  >/dev/null 2>&1",
-               [], infinity),
-    ok.
+    chk(sh(RepoDir,
+           "git submodule update --init --recursive  >/dev/null 2>&1",
+           [], infinity)).
 
 delete_submodules (RepoDir) -> %No git command as of yet!
     %%cat gitmodules.txt | `which grep` -P '^\s*path\s+=' | sed 's/\s\*//' | cut -d ' ' -f 3
     %%string:tokens("  \tpath = .gitmodule/raintpl", "\t ").
-    impl.
+    impl.%%FIXME
 
 rebar_get_deps (RepoDir) -> %mind rebar hooks!!
     %% (Does nothing if no rebar.config exists)
     %{0,_} = sh(RepoDir, "rebar get-deps  >/dev/null 2>&1", [], infinity),
-    ok.
+    ok.%%FIXME
 
 rebar_delete_deps (RepoDir) -> %mind rebar hooks!!
     %{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null 2>&1"),
-    ok.
+    ok.%%FIXME
 
 %% Internals
+
+chk (ShCall) ->
+    case ShCall of
+        {0, _} -> ok;
+        {Code, Stdout} -> throw({sh,error,Code,Stdout})
+    end.
 
 shorten (Commit) ->
     lists:sublist(Commit, 7).
