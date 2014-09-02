@@ -106,9 +106,10 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
 repo_discovery (Title, RepoPath) ->
-    Found = ?u:find_files(RepoPath, [ "rebar.config"
-                                    , "Makefile"
-                                    , ".gitmodules" ]),
+    Found = [ File || File <- [ "Makefile"
+                              , ".gitmodules" ],
+                      path_exists([RepoPath,File]) ]
+        ++ filelib:wildcard("rebar.config*", RepoPath),
     {Title, [ begin
                   FilePath = filename:join(RepoPath, File),
                   {ok, Bin} = file:read_file(FilePath),
