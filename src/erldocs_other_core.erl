@@ -48,6 +48,7 @@ main (Conf) ->
 
 main_cont ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
            Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
+    ?LOG("Processing\trepo:~s\ttitle:~s\tcommit:~s\n", [RepoName,Title,Commit]),
     TitledPath = copy_repo(Method, {Commit,Title}, RepoName, Dest),
 
     ?LOG("Getting dependencies\n"),
@@ -125,12 +126,15 @@ erldocs (Conf, DocsRoot, Branch, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
     ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
     mkdir(DocsDest),
-    Args = [ Path %Add Path/* & Path/apps/* ?
+    Args = [ Path
            , "-o",     DocsDest
            , "--base", kf(Conf,base)
            , "--ga",   kf(Conf,ga)
-           ] ++ lists:flatmap(fun (Dir) -> ["-I", Dir] end,
-                              find_dirs("\\.hrl$", Path)),
+           ]
+        ++ list_abs(Path, "apps/*")
+        ++ list_abs(Path, "applications/*")
+        ++ lists:flatmap(fun (Dir) -> ["-I", Dir] end,
+                         find_dirs("\\.hrl$", Path)),
     erldocs:main(Args).
 
 find_dirs (FilePattern, Path) ->
@@ -139,6 +143,10 @@ find_dirs (FilePattern, Path) ->
               end,
     Dirs = filelib:fold_files(Path, FilePattern, true, AccDirs, []),
     lists:usort(Dirs).
+
+list_abs (Path, Wildcard) ->
+    Pattern = filename:join(Path, Wildcard),
+    filelib:wildcard(Pattern).
 
 kf (Conf, Key) ->
     {Key, Value} = lists:keyfind(Key, 1, Conf),

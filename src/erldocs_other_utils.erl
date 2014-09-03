@@ -37,7 +37,7 @@ find_files (Dir, Names) ->
     [Path || {"./"++Path} <- R].
 
 git_clone (Url, Dir) ->
-    chk(sh("git clone --no-checkout -- '~s' '~s'  >/dev/null 2>&1",
+    chk(sh("git clone --no-checkout -- '~s' '~s'  >/dev/null",
            [Url,Dir], infinity)).
 
 git_branches (RepoDir) ->
@@ -59,7 +59,7 @@ git_changeto (RepoDir, Commit) ->
 git_get_submodules (RepoDir) ->
     %% (Does nothing if no .gitmodules exists)
     chk(sh(RepoDir,
-           "git submodule update --init --recursive  >/dev/null 2>&1",
+           "git submodule update --init --recursive  >/dev/null",
            [], infinity)).
 
 delete_submodules (RepoDir) -> %No git command as of yet!
@@ -83,11 +83,17 @@ rebar_get_deps (RepoDir) ->
         {deps, _}=Deps ->
             erldocs_other_core:to_file(NewReFile, [Deps])
     end,
-    case sh(RepoDir, "rebar --config '~s' get-deps  >/dev/null 2>&1",
+    case sh(RepoDir, "rebar --config '~s' get-deps  >/dev/null",
             [NewReFile], infinity) of
         {0, _} ->
-            {0,Ls} = sh(RepoDir, "ls -1 deps/", []),
-            io:format("~p\n",[[Dep || {Dep} <- Ls]]);
+            case filelib:is_dir(filename:join(RepoDir, "deps")) of
+                true  ->
+                    {0,Ls} = sh(RepoDir, "ls -1 deps/", []),
+                    io:format("~p\n",[[Dep || {Dep} <- Ls]]);
+                false ->
+                    io:format("[]\n"),
+                    error
+            end;
         {_, _} ->
             io:format("[]\n"),
             error
@@ -95,7 +101,7 @@ rebar_get_deps (RepoDir) ->
 
 rebar_delete_deps (RepoDir) -> %mind rebar hooks!!
     %% rebar allows you to fetch deps into a dir ≠ deps/
-    %%{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null 2>&1"),
+    %%{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null"),
     ok.%%FIXME
 
 %% Internals
@@ -114,7 +120,7 @@ sh (Fmt, Data) ->
 
 sh (Fmt, Data, Timeout)
   when is_atom(Timeout); is_integer(Timeout) ->
-    Cmd = lists:flatten(io_lib:format(Fmt, Data)),
+    Cmd = lists:flatten(io_lib:format(Fmt++" 2>&1", Data)),
     run(Cmd, Timeout);
 
 sh (Dir, Fmt, Data) ->
