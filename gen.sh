@@ -21,12 +21,13 @@ kf (){
 tmp=/tmp/other
 mkdir -p $tmp
 rm -rf $tmp/*
+log=$tmp/_.txt
 
 $generator     \
     "$url"     \
     -o $tmp    \
     --base '/' \
-    2>&1 | tee $tmp/_
+    2>&1 | tee $log
 
 err_code=${PIPESTATUS[0]}
 [[ $err_code -ne 0 ]] && echo "$generator failed" && exit 3
@@ -36,10 +37,10 @@ target_path=$(kf target_path $tmp/meta.terms)
 dest="$odir"/$target_path
 mkdir -pv "$dest"
 rm -rf    "$dest" # Instead of `rm -rf "$dest"/*` => Can `stat` "$dest" for info!
-mkdir -pv "$dest"
+mkdir -p  "$dest"
 
-mv -v $tmp/_ "$dest"/
-mv -v $tmp/meta.terms "$dest"/
+mv -v $log "$dest"/
+mv -v $tmp/meta.terms "$dest"/meta.txt
 mv -v $tmp/repo/repo.css "$odir"/
 for decor in 'erldocs.css' 'erldocs.js' 'jquery.js'; do
     path=$(find $tmp/repo -name $decor | head -n 1)
@@ -50,7 +51,7 @@ find $tmp/repo -type d -name '.xml' -exec rm -r "{}" \;  2>/dev/null
 mv -v $tmp/repo/* "$dest"/
 
 cd "$odir"
-find . -name meta.terms | cut -c3- | sed 's/...........$//' > index.html
+find . -name meta.txt | cut -c3- | sed 's/.........$//' > index.html
 cd -
 
 echo    "Just gen'd $url over at $dest"
