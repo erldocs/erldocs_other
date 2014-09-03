@@ -124,7 +124,7 @@ repo_discovery (Title, RepoPath) ->
 
 erldocs (Conf, DocsRoot, Branch, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
-    ?LOG("Generating erldocs for ~s into ~s\n", [Path,DocsDest]),
+    ?LOG("Generating erldocs into ~s\n", [DocsDest]),
     mkdir(DocsDest),
     Args = [ Path
            , "-o",     DocsDest
