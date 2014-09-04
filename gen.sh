@@ -57,13 +57,16 @@ cd -
 echo    "Just gen'd $url over at $dest"
 echo -e "\t"http://other.erldocs.com/$target_path
 
-if [[ -d "$odir"/.git ]]; then
-    cd "$odir" \
-        && git pull origin gh-pages \
-        && git add -A $target_path \
-        && git commit -am "Generated docs for $url" \
-        && git push origin gh-pages
-    cd -
+if [[ 42 -eq 0 ]]; then # Desactivated
+    if [[ -d "$odir"/.git ]]; then
+        cd "$odir" \
+            && git pull origin gh-pages \
+            && git add -A $target_path \
+            && git commit -am "Generated docs for $url" \
+            && git push origin gh-pages
+        cd -
+    fi
 fi
 
 rm -rf $tmp
+echo ============================================================
