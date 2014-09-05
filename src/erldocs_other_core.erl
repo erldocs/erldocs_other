@@ -5,22 +5,22 @@
 
 %% erldocs_other_core: main logic of the erldocs_other module.
 
--export([ main/1 ]).
+-export([ main/1
+        , to_file/2
+        ]).
 
 -define(LOG(Str, Args), io:format(" :: "++ Str, Args)).
 -define(LOG(Str),       io:format(" :: "++ Str)).
 
 -define(u, erldocs_other_utils).
 
--export([ to_file/2
-        ]).
-
 %% API
 
 main (Conf) ->
     URL0         = kf(Conf, url),
     Destination0 = kf(Conf, dest),
-    {Method, Url} = method(URL0),
+    {true,Url} = url(URL0),
+    Method     = method(Url),
     RepoName = repo_name(Url),
 
     Dest     = filename:absname(Destination0),
@@ -68,7 +68,7 @@ main_cont ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
 main_cont ([], _, _, TmpDir,
            Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
     ?LOG("Erldocs finishing up.\n"),
-    to_file(MetaFile, [{discover,Treasures}], [append]),
+    to_file(MetaFile, [{discovered,Treasures}], [append]),
     ?u:rmrf(TmpDir),
     put_repo_index(Conf, DocsRoot, Meta).
 
@@ -112,15 +112,33 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
 repo_discovery (Title, RepoPath) ->
-    Found = [ File || File <- [ "Makefile"
-                              , ".gitmodules" ],
-                      path_exists([RepoPath,File]) ]
-        ++ filelib:wildcard("rebar.config*", RepoPath),
-    {Title, [ begin
-                  FilePath = filename:join(RepoPath, File),
-                  {ok, Bin} = file:read_file(FilePath),
-                  {File, Bin}
-              end || File <- Found ]}.
+    FilesFound = filelib:wildcard("rebar.config*", RepoPath)
+        ++ [ File || File <- [ "Makefile"
+                             , ".gitmodules" ],
+                     path_exists([RepoPath,File]) ],
+    UrlsFound = discover_files(RepoPath, FilesFound),
+    {Title, lists:filtermap(fun url/1, UrlsFound)}.
+
+discover_files (RepoPath, Files) ->
+    lists:flatmap(
+      fun (File) ->
+              FilePath = filename:join(RepoPath, File),
+              {ok, Contents} = file:read_file(FilePath),
+              case File of
+                  "Makefile" ->        Chars = "\s\"'";
+                  ".gitmodules" ->     Chars = "\s=";
+                  "rebar.config"++_ -> Chars = "\""
+              end,
+              discover_urls(Chars, Contents)
+      end, Files).
+
+discover_urls (Seps, Bin) ->
+    RegExp = [ "[", Seps, "]([^", Seps, "]+://[^", Seps, "]+)[", Seps, "]" ],
+    case re:run(Bin, lists:flatten(RegExp),
+                [{capture,all_but_first,list}, unicode, global]) of
+        {match, Urls} -> lists:append(Urls);
+        nomatch -> []
+    end.
 
 erldocs (Conf, DocsRoot, Branch, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
@@ -135,6 +153,9 @@ erldocs (Conf, DocsRoot, Branch, Path) ->
         ++ list_abs(Path, "applications/*")
         ++ lists:flatmap(fun (Dir) -> ["-I", Dir] end,
                          find_dirs("\\.hrl$", Path)),
+    %% FIXME add non-deps containing src/
+    %% ++ [ filename:dirname(Dir) || Dir <- find_dirs(".+", Path)
+    %%                                   lists:suffix("/src", Dir) ],
     erldocs:main(Args).
 
 find_dirs (FilePattern, Path) ->
@@ -162,9 +183,12 @@ copy_repo (git, {Commit,Title}, RepoName, DestDir) ->
     TitledPath.
 
 get_deps (Path) ->
-    ?u:git_get_submodules(Path),
     case path_exists([Path, "rebar.config"]) of
         true  -> ?u:rebar_get_deps(Path);
+        false -> ok
+    end,
+    case path_exists([Path, ".gitmodules"]) of
+        true  -> ?u:git_get_submodules(Path);
         false -> ok
     end.
 
@@ -200,30 +224,29 @@ extract_info (git, Url, TmpDir) ->
     [ {name, repo_name(Url)}
     , {target_path, repo_local_path(Url)}
     , {url, Url}
+    , {size_of_repo, ?u:du(TmpDir)}
     , {method, git}
     , {branches, ?u:git_branches(TmpDir)}
-    , {tags, ?u:git_tags(TmpDir)}
-    ];
+    , {tags, ?u:git_tags(TmpDir)} ];
 extract_info (Other, _, _) ->
-    ?LOG("~p method not supported yet\n", [Other]),
-    error.
+    throw({badmethod, Other}).
 
 clone_repo (git, Url, TmpDir) ->
     ?u:git_clone(Url, TmpDir);
-clone_repo (_, Url, _) ->  %% Git scheme will come here later…
-    ?LOG("~s scheme or host not suported yet\n", [Url]),
-    error.
+clone_repo (Other, Url, _) ->
+    throw({badmethod, Other, url, Url}).
 
 
-method (URL0) ->
+method ("https://github.com/"++_) -> git;
+method ("https://bitbucket.org/"++_) -> git.
+
+url (URL0) ->
     Url = string:to_lower(URL0),
     case re:run(Url, "(github.com|bitbucket.org)[:/]([^:/]+)/([^/]+)",
                 [{capture,all_but_first,list}, unicode]) of
         {match, [Site,User,Name]} ->
-            {git, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
-        nomatch ->
-            ?LOG("~s scheme or host not suported yet\n", [Url]),
-            error
+            {true, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
+        nomatch -> false
     end.
 
 trim_dotgit (Str) ->

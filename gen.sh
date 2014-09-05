@@ -30,7 +30,7 @@ $generator     \
     2>&1 | tee $log
 
 err_code=${PIPESTATUS[0]}
-[[ $err_code -ne 0 ]] && echo "$generator failed" && exit 3
+[[ $err_code -ne 0 ]] && echo "$generator failed, given $url" && exit 3
 
 url=$(kf url $tmp/meta.terms)
 target_path=$(kf target_path $tmp/meta.terms)

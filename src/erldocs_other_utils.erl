@@ -8,6 +8,7 @@
 -export([ rmrf/1
         , cp/3
         , find_files/2
+        , du/1
 
         , git_clone/2
         , git_branches/1
@@ -25,10 +26,10 @@
 %% API
 
 rmrf (Dir) ->
-    chk(sh("rm -rf '~s'", [Dir])).
+    chk(rmrf, sh("rm -rf '~s'", [Dir])).
 
 cp (ChDir, Src, Dst) ->
-    chk(sh(ChDir, "cp -pr '~s' '~s'", [Src,Dst])).
+    chk(cp, sh(ChDir, "cp -pr '~s' '~s'", [Src,Dst])).
 
 find_files (Dir, Names) ->
     Tildes = lists:duplicate(length(Names), "~s"),
@@ -36,9 +37,14 @@ find_files (Dir, Names) ->
     {0,R} = sh(Dir, "find . -name '"++ Quoted ++"'", Names),
     [Path || {"./"++Path} <- R].
 
+du (Dir) ->
+    {0,R} = sh(Dir, "du . | tail -n 1", []),
+    [{Size,_}] = R,
+    list_to_integer(Size).
+
 git_clone (Url, Dir) ->
-    chk(sh("git clone --no-checkout -- '~s' '~s'  >/dev/null",
-           [Url,Dir], infinity)).
+    chk(git_clone, sh("git clone --no-checkout -- '~s' '~s'  >/dev/null",
+                      [Url,Dir], infinity)).
 
 git_branches (RepoDir) ->
     {0,Branches} = sh(RepoDir, "git ls-remote --heads origin", []),
@@ -54,13 +60,11 @@ git_tags (RepoDir) ->
     [{shorten(Commit),Tag} || {Tag,Commit} <- Tags].
 
 git_changeto (RepoDir, Commit) ->
-    chk(sh(RepoDir, "git checkout --quiet '~s'", [Commit])).
+    chk(git_changeto, sh(RepoDir, "git checkout --quiet '~s'", [Commit])).
 
 git_get_submodules (RepoDir) ->
-    %% (Does nothing if no .gitmodules exists)
-    chk(sh(RepoDir,
-           "git submodule update --init --recursive  >/dev/null",
-           [], infinity)).
+    chk(git_get_submodules,
+        sh(RepoDir, "git submodule update --init --recursive", [], infinity)).
 
 delete_submodules (RepoDir) -> %No git command as of yet!
     %%cat gitmodules.txt | `which grep` -P '^\s*path\s+=' | sed 's/\s\*//' | cut -d ' ' -f 3
@@ -79,20 +83,17 @@ rebar_get_deps (RepoDir) ->
     {ok, ReConf} = file:consult(ReFile),
     case lists:keyfind(deps, 1, ReConf) of
         false ->
-            chk(sh("touch '~s'", [NewReFile]));
+            chk(touch, sh("touch '~s'", [NewReFile]));
         {deps, _}=Deps ->
             erldocs_other_core:to_file(NewReFile, [Deps])
+            %% FIXME {validate_app_modules,false}
     end,
-    case sh(RepoDir, "rebar --config '~s' get-deps  >/dev/null",
+    case sh(RepoDir, "rebar --config '~s' get-deps",%  >/dev/null",
             [NewReFile], infinity) of
         {0, _} ->
-            case filelib:is_dir(filename:join(RepoDir, "deps")) of
-                true  ->
-                    {0,Ls} = sh(RepoDir, "ls -1 deps/", []),
-                    io:format("~p\n",[[Dep || {Dep} <- Ls]]);
-                false ->
-                    io:format("[]\n"),
-                    error
+            case sh(RepoDir, "ls -1 deps/", []) of
+                {0, Ls} -> io:format("~p\n",[[Dep || {Dep} <- Ls]]);
+                {_, _}  -> io:format("[]\n"), error
             end;
         {_, _} ->
             io:format("[]\n"),
@@ -106,10 +107,10 @@ rebar_delete_deps (RepoDir) -> %mind rebar hooks!!
 
 %% Internals
 
-chk (ShCall) ->
+chk (Func, ShCall) ->
     case ShCall of
         {0, _} -> ok;
-        {Code, Stdout} -> throw({sh,error,Code,Stdout})
+        {Code, Stdout} -> throw({sh,Func,error,Code,Stdout})
     end.
 
 shorten (Commit) ->
