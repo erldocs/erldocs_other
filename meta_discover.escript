@@ -24,8 +24,11 @@ main ([Dir]) ->
                         to_file(File, NewTerms, []);
 
                     false ->
-                        {_, Discovered} = lists:keyfind(discovered, 1, Terms),
-                        print(Discovered)
+                        case lists:keyfind(discovered, 1, Terms) of
+                            {_, Discovered} ->
+                                print(Discovered);
+                            false -> ok
+                        end
                 end
         end,
     filelib:fold_files(Dir, "meta\\.txt", true, F, ignore);
