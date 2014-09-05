@@ -125,8 +125,8 @@ search_files (RepoPath, Files) ->
               FilePath = filename:join(RepoPath, File),
               {ok, Contents} = file:read_file(FilePath),
               case File of
-                  "Makefile" ->        Chars = "\s\"'";
-                  ".gitmodules" ->     Chars = "\s=";
+                  "Makefile" ->        Chars = "\\s\"'";
+                  ".gitmodules" ->     Chars = "\\s=";
                   "rebar.config"++_ -> Chars = "\""
               end,
               discover_urls(Chars, Contents)

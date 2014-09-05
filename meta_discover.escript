@@ -46,10 +46,10 @@ print (L)
 discover_urls (NameNContentsPairs) ->
     F = fun ({File, Contents}) ->
                 case lists:suffix("Makefile", File) of
-                    true  -> discover_urls("\s\"'", Contents);
+                    true  -> discover_urls("\\s\"'", Contents);
                     false ->
                         case lists:suffix(".gitmodules", File) of
-                            true  -> discover_urls("\s=", Contents);
+                            true  -> discover_urls("\\s=", Contents);
                             false -> discover_urls("\"", Contents)
                         end
                 end
