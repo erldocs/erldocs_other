@@ -50,7 +50,8 @@ for decor in 'erldocs.css' 'erldocs.js' 'jquery.js'; do
     find $tmp/repo -name $decor -delete
 done
 find $tmp/repo -type d -name '.xml' -exec rm -r "{}" \;  2>/dev/null
-mv -v $tmp/repo/* "$dest"/
+echo "mv'ing $tmp/repo/* to $dest/"
+mv $tmp/repo/* "$dest"/
 
 echo    "Just gen'd $url over at $dest"
 echo -e "\t"http://other.erldocs.com/$target_path
