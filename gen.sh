@@ -32,15 +32,17 @@ $generator     \
 err_code=${PIPESTATUS[0]}
 [[ $err_code -ne 0 ]] && echo "$generator failed, given $url" && exit 3
 
-url=$(kf url $tmp/meta.terms)
-target_path=$(kf target_path $tmp/meta.terms)
+meta=$tmp/meta.terms
+[[ ! -f $meta ]] && echo "generating meta failed, given $url" && exit 3
+url=$(kf url $meta)
+target_path=$(kf target_path $meta)
 dest="$odir"/$target_path
 mkdir -pv "$dest"
 rm -rf    "$dest" # Instead of `rm -rf "$dest"/*` => Can `stat` "$dest" for info!
 mkdir -p  "$dest"
 
 mv -v $log "$dest"/
-mv -v $tmp/meta.terms "$dest"/meta.txt
+mv -v $meta "$dest"/meta.txt
 mv -v $tmp/repo/repo.css "$odir"/
 for decor in 'erldocs.css' 'erldocs.js' 'jquery.js'; do
     path=$(find $tmp/repo -name $decor | head -n 1)
