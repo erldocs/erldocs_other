@@ -50,10 +50,6 @@ done
 find $tmp/repo -type d -name '.xml' -exec rm -r "{}" \;  2>/dev/null
 mv -v $tmp/repo/* "$dest"/
 
-cd "$odir"
-find . -name meta.txt | cut -c3- | sed 's/.........$//' > index.html
-cd -
-
 echo    "Just gen'd $url over at $dest"
 echo -e "\t"http://other.erldocs.com/$target_path
 

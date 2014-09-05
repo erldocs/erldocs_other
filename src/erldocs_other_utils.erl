@@ -43,7 +43,7 @@ du (Dir) ->
     list_to_integer(Size).
 
 git_clone (Url, Dir) ->
-    chk(git_clone, sh("git clone --no-checkout -- '~s' '~s'  >/dev/null",
+    chk(git_clone, sh("git clone --no-checkout -- '~s' '~s'",%  >/dev/null",
                       [Url,Dir], infinity)).
 
 git_branches (RepoDir) ->
