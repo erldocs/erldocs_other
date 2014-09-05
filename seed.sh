@@ -21,7 +21,7 @@ for i in $(seq 1 "$max"); do
     curl -fsSLo $tmp/$i $root/$i
 
     # Extract projects' path
-    grep -P '"[^\s][^"]+"\s+target=[^,]+$' $tmp/$i | cut -d '"' -f 2 | while read url; do echo "<<\"$url\">>."; done >> $outf
+    grep -P '"[^\s][^"]+"\s+target=[^,]+$' $tmp/$i | cut -d '"' -f 2 >> $outf
 
     sleep 2
 done
