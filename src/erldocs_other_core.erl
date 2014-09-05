@@ -116,10 +116,10 @@ repo_discovery (Title, RepoPath) ->
         ++ [ File || File <- [ "Makefile"
                              , ".gitmodules" ],
                      path_exists([RepoPath,File]) ],
-    UrlsFound = discover_files(RepoPath, FilesFound),
+    UrlsFound = search_files(RepoPath, FilesFound),
     {Title, lists:filtermap(fun url/1, UrlsFound)}.
 
-discover_files (RepoPath, Files) ->
+search_files (RepoPath, Files) ->
     lists:flatmap(
       fun (File) ->
               FilePath = filename:join(RepoPath, File),
