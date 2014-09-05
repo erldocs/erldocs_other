@@ -57,7 +57,7 @@ discover_urls (NameNContentsPairs) ->
 discover_urls (Seps, Bin) ->
     RegExp = [ "[", Seps, "]([^", Seps, "]+://[^", Seps, "]+)[", Seps, "]" ],
     case re:run(Bin, lists:flatten(RegExp),
-                [{capture,all_but_first,list}, unicode, global]) of
+                [{capture,all_but_first,list}, global]) of
         {match, Urls} -> lists:append(Urls);
         nomatch -> []
     end.
@@ -65,7 +65,7 @@ discover_urls (Seps, Bin) ->
 url (URL0) ->
     Url = string:to_lower(URL0),
     case re:run(Url, "(github.com|bitbucket.org)[:/]([^:/]+)/([^/]+)",
-                [{capture,all_but_first,list}, unicode]) of
+                [{capture,all_but_first,list}]) of
         {match, [Site,User,Name]} ->
             {true, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
         nomatch -> false
