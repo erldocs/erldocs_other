@@ -4,6 +4,7 @@
 
 root='https://erlangcentral.org/erlang-projects'
 outf=repos.seed
+touch $outf
 
 # Temp dir
 tmp=repos
@@ -17,11 +18,12 @@ rm $tmp_root
 [[ "$max" = '' ]] && exit 2
 
 for i in $(seq 1 "$max"); do
+    echo $root/$i
     # Fetch HTML page
     curl -fsSLo $tmp/$i $root/$i
 
     # Extract projects' path
-    grep -P '"[^\s][^"]+"\s+target=[^,]+$' $tmp/$i | cut -d '"' -f 2 >> $outf
+    grep -P '"[^\s][^"]+"\s+target=[^,]+$' $tmp/$i | cut -d '"' -f 2 | tee --append $outf
 
     sleep 2
 done
