@@ -18,7 +18,7 @@ kf (){
 }
 
 
-tmp="$1"
+tmp="$1"/$RANDOM
 mkdir -p $tmp
 rm -rf $tmp/*
 log=$tmp/_.txt
