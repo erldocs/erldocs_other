@@ -2,11 +2,11 @@
 
 # Generate content for other.erldocs.com
 
-[[ $# -eq 0 ]] && echo "Usage: $0  ‹website dir› ‹repo URL›" && exit 1
+[[ $# -eq 0 ]] && echo "Usage: $0  ‹tmp dir› ‹website dir› ‹repo URL›" && exit 1
 
-odir="$1"
+odir="$2"
 [[ ! -d "$odir" ]] && echo "$odir is not a directory" && exit 2
-url="$2"
+url="$3"
 
 generator='./erldocs_other'
 [[ ! -x $generator ]] && [[ ! -L $generator ]] && echo "$generator not executable" && exit 2
@@ -14,11 +14,11 @@ generator='./erldocs_other'
 kf (){
     local key="$1"
     local metafile="$2"
-    erl -noshell -eval '{ok, Terms} = file:consult("'"$metafile"'"), {_, Value} = lists:keyfind('$key', 1, Terms), io:format("~s\n", [Value]).' -s init stop
+    erl -noshell -eval 'try {ok, Terms} = file:consult("'"$metafile"'"), {_, Value} = lists:keyfind('$key', 1, Terms), io:format("~s\n", [Value]) catch error:{badmatch,{error,enoent}} -> no end.' -s init stop
 }
 
 
-tmp=/tmp/other
+tmp="$1"
 mkdir -p $tmp
 rm -rf $tmp/*
 log=$tmp/_.txt
@@ -33,8 +33,8 @@ err_code=${PIPESTATUS[0]}
 [[ $err_code -ne 0 ]] && echo "$generator failed, given $url" && exit 3
 
 meta=$tmp/meta.terms
-[[ ! -f $meta ]] && echo "generating meta failed, given $url" && exit 3
 url=$(kf url $meta)
+[[ "$url" = '' ]] && echo "generating meta failed, given $url" && exit 3
 target_path=$(kf target_path $meta)
 dest="$odir"/$target_path
 mkdir -pv "$dest"
