@@ -4,8 +4,12 @@
 dir="$1"
 msg="$2"
 
+apps=apps.js
+
 cd "$dir" \
-    && find . -name meta.txt | cut -c3- | sed 's/.........$//' > index.html \
+    && echo 'apps = [' >$apps \
+    && find . -name meta.txt | cut -c3- | sed 's/.........$/",/' | sed 's/^/"/' >>$apps \
+    && echo '];' >>$apps \
     && git pull origin gh-pages \
     && git add -A . \
     && git commit -am "$msg" \
