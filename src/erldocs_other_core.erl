@@ -17,6 +17,7 @@
 %% API
 
 main (Conf) ->
+    TimeBegin = utc(),
     URL0         = kf(Conf, url),
     Destination0 = kf(Conf, dest),
     {true,Url} = url(URL0),
@@ -35,7 +36,7 @@ main (Conf) ->
     ok = clone_repo(Method, Url, TmpDir),
 
     ?LOG("Extracting meta information\n"),
-    Meta = extract_info(Method, Url, TmpDir),
+    Meta = extract_info(Method, Url, TimeBegin, TmpDir),
     ?LOG("Writing meta to ~p\n", [MetaFile]),
     to_file(MetaFile, Meta),
 
@@ -65,10 +66,12 @@ main_cont ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
     ?u:rmrf(filename:dirname(TitledPath)),  %% rm titled repo
     main_cont(TBs, Method, RepoName, TmpDir,
               Conf, Meta, MetaFile, DocsRoot, Dest, [Treasure|Acc]);
+
 main_cont ([], _, _, TmpDir,
            Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
     ?LOG("Erldocs finishing up.\n"),
-    to_file(MetaFile, [{discovered,Treasures}], [append]),
+    MetaRest = [{discovered,Treasures}, {time_end,utc()}],
+    to_file(MetaFile, MetaRest, [append]),
     ?u:rmrf(TmpDir),
     put_repo_index(Conf, DocsRoot, Meta).
 
@@ -220,16 +223,20 @@ repo_local_path (Url) ->
     Exploded = string:tokens(Url, "/"),
     filename:join(tl(Exploded)).
 
-extract_info (git, Url, TmpDir) ->
+extract_info (git, Url, TimeBegin, TmpDir) ->
     [ {name, repo_name(Url)}
     , {target_path, repo_local_path(Url)}
     , {url, Url}
     , {size_of_repo, ?u:du(TmpDir)}
+    , {time_begin, TimeBegin}
     , {method, git}
     , {branches, ?u:git_branches(TmpDir)}
     , {tags, ?u:git_tags(TmpDir)} ];
-extract_info (Other, _, _) ->
+extract_info (Other, _, _, _) ->
     throw({badmethod, Other}).
+
+utc () ->
+    calendar:universal_time().
 
 clone_repo (git, Url, TmpDir) ->
     ?u:git_clone(Url, TmpDir);
