@@ -120,7 +120,7 @@ repo_discovery (Title, RepoPath) ->
                              , ".gitmodules" ],
                      path_exists([RepoPath,File]) ],
     UrlsFound = search_files(RepoPath, FilesFound),
-    {Title, lists:filtermap(fun url/1, UrlsFound)}.
+    {Title, lists:usort(lists:filtermap(fun url/1, UrlsFound))}.
 
 search_files (RepoPath, Files) ->
     lists:flatmap(
@@ -128,15 +128,21 @@ search_files (RepoPath, Files) ->
               FilePath = filename:join(RepoPath, File),
               {ok, Contents} = file:read_file(FilePath),
               case File of
-                  "Makefile" ->        Chars = "\\s\"'();,";
-                  ".gitmodules" ->     Chars = "\\s=";
-                  "rebar.config"++_ -> Chars = "\\s\""
-              end,
-              discover_urls(Chars, Contents)
+                  "Makefile" ->
+                      discover_urls("\\s\"'();,", Contents);
+                  ".gitmodules" ->
+                      discover_urls("\\s=",       Contents)
+                   ++ discover_urls("\\s\"", "@", Contents);
+                  "rebar.config"++_ ->
+                      discover_urls("\\s\"",      Contents)
+                   ++ discover_urls("\\s\"", "@", Contents)
+              end
       end, Files).
 
 discover_urls (Seps, Bin) ->
-    RegExp = [ "[", Seps, "]([^", Seps, "]+://[^", Seps, "]+)[", Seps, "]" ],
+    discover_urls (Seps, "://", Bin).
+discover_urls (Seps, Mid, Bin) ->
+    RegExp = [ "[",Seps,"]([^", Seps, "]+", Mid, "[^", Seps, "]+)[",Seps,"]" ],
     case re:run(Bin, lists:flatten(RegExp),
                 [{capture,all_but_first,list}, global]) of
         {match, Urls} -> lists:append(Urls);
