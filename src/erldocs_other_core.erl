@@ -44,11 +44,11 @@ main (Conf) ->
     Tags     = kf(Meta, tags),
     Branches = kf(Meta, branches),
     TBs = Tags ++ Branches,
-    main_cont(TBs, Method, RepoName, TmpDir,
-              Conf, Meta, MetaFile, DocsRoot, Dest, []).
+    main(TBs, Method, RepoName, TmpDir,
+         Conf, Meta, MetaFile, DocsRoot, Dest, []).
 
-main_cont ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
-           Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
+main ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
+      Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
     ?LOG("Processing\trepo:~s\ttitle:~s\tcommit:~s\n", [RepoName,Title,Commit]),
     TitledPath = copy_repo(Method, {Commit,Title}, RepoName, Dest),
 
@@ -62,13 +62,17 @@ main_cont ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
     ?LOG("Discovering other repos\n"),
     %%del_deps(TitledPath),
     Treasure = repo_discovery(Title, TitledPath),
+    case Treasure of
+        {_, []} -> Treasures = Acc;
+        _ ->       Treasures = [Treasure|Acc]
+    end,
 
     ?u:rmrf(filename:dirname(TitledPath)),  %% rm titled repo
-    main_cont(TBs, Method, RepoName, TmpDir,
-              Conf, Meta, MetaFile, DocsRoot, Dest, [Treasure|Acc]);
+    main(TBs, Method, RepoName, TmpDir,
+         Conf, Meta, MetaFile, DocsRoot, Dest, Treasures);
 
-main_cont ([], _, _, TmpDir,
-           Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
+main ([], _, _, TmpDir,
+      Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
     ?LOG("Erldocs finishing up.\n"),
     MetaRest = [{discovered,Treasures}, {time_end,utc()}],
     to_file(MetaFile, MetaRest, [append]),
