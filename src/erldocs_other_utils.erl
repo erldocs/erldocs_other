@@ -8,6 +8,7 @@
 -export([ rmrf/1
         , cp/3
         , find_files/2
+        , rmr_symlinks/1
         , du/1
 
         , git_clone/2
@@ -36,6 +37,9 @@ find_files (Dir, Names) ->
     Quoted = string:join(Tildes, "' -or -name '"),
     {0,R} = sh(Dir, "find . -name '"++ Quoted ++"'", Names),
     [Path || {"./"++Path} <- R].
+
+rmr_symlinks (Dir) ->
+    chk(rmr_symlinks, sh(Dir, "find -P . -type l -delete", [])).
 
 du (Dir) ->
     {0,R} = sh(Dir, "du . | tail -n 1", []),

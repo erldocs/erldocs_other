@@ -189,6 +189,7 @@ copy_repo (git, {Commit,Title}, RepoName, DestDir) ->
     %% cd DestDir && cp -pr RepoName TitledPath
     ?u:cp(DestDir, RepoName, TitledPath),
     ?u:git_changeto(TitledPath, Commit),
+    ?u:rmr_symlinks(TitledPath),
     TitledPath.
 
 get_deps (Path) ->
