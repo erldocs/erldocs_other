@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[[ $# -ne 2 ]] && echo "Usage: $0  ‹git dir› ‹commit message›"
+[[ $# -ne 2 ]] && echo "Usage: $0  ‹git dir› ‹commit message›" && exit 1
 dir="$1"
 msg="$2"
 
