@@ -1,5 +1,4 @@
 all: erl.mk
-	$(MAKE) $(APP)
 	test -f deps/erldocs/erldocs && rm deps/erldocs/erldocs || true
 	$(MAKE) escript
 
