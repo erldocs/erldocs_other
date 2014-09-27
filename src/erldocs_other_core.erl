@@ -17,6 +17,7 @@
 %% API
 
 main (Conf) ->
+    start_output_redirection(kf(Conf, logfile)),
     TimeBegin = utc(),
     URL0         = kf(Conf, url),
     Destination0 = kf(Conf, dest),
@@ -77,7 +78,8 @@ main ([], _, _, TmpDir,
     MetaRest = [{discovered,Treasures}, {time_end,utc()}],
     to_file(MetaFile, MetaRest, [append]),
     ?u:rmrf(TmpDir),
-    put_repo_index(Conf, DocsRoot, Meta).
+    put_repo_index(Conf, DocsRoot, Meta),
+    stop_output_redirection().
 
 %% Internals
 
@@ -276,5 +278,20 @@ to_file (Path, Data) ->
 to_file (Path, Data, Options) ->
     Str = [io_lib:fwrite("~p.\n",[Datum]) || Datum <- Data],
     file:write_file(Path, Str, Options).
+
+start_output_redirection (standard_io) -> ok;
+start_output_redirection (LogFile) ->
+    put(previous_group_leader, group_leader()),
+    {ok, Fd} = file:open(LogFile, [append]),
+    group_leader(Fd, self()).
+
+stop_output_redirection () ->
+    case get(previous_group_leader) of
+        undefined -> ok;
+        Pid ->
+            Fd = group_leader(),
+            group_leader(Pid, self()),
+            ok = file:close(Fd)
+    end.
 
 %% End of Module.

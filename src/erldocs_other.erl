@@ -10,6 +10,7 @@
 -record(conf, { dest = ""
               , url  = ""
               , base = "./"
+              , logfile = standard_io
               , ga = "UA-54292016-1" }).
 
 %% API
@@ -17,7 +18,7 @@
 main ([]) ->
     ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
-    io:format("Usage: \n\t~s  -o ‹output dir› ‹repo URL›\n", [Arg0]),
+    io:format("Usage: \n\t~s  -o ‹output dir› [--logfile ‹path›] ‹repo URL›\n", [Arg0]),
     halt(1);
 main (Args) ->
     parse(Args, #conf{}).
@@ -32,6 +33,7 @@ parse ([], Conf) ->
         false -> run([ {dest, Dest}
                      , {url,  URL}
                      , {base, Conf#conf.base}
+                     , {logfile, Conf#conf.logfile}
                      , {ga,   Conf#conf.ga} ])
     end;
 
@@ -39,6 +41,8 @@ parse (["-o",     Dest | Rest], Conf) ->
     parse(Rest, Conf#conf{dest = Dest});
 parse (["--base", Base | Rest], Conf) ->
     parse(Rest, Conf#conf{base = Base});
+parse (["--logfile", LF| Rest], Conf) ->
+    parse(Rest, Conf#conf{logfile = LF});
 parse (["--ga",     GA | Rest], Conf) ->
     parse(Rest, Conf#conf{ga   = GA  });
 parse ([URL            | Rest], Conf) ->
