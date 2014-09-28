@@ -1,7 +1,7 @@
 %% Copyright © 2014 Pierre Fenoll ‹pierrefenoll@gmail.com›
 %% See LICENSE for licensing information.
 %% -*- coding: utf-8 -*-
--module(erldocs_other_core).
+-module(eo_core).
 
 %% erldocs_other_core: main logic of the erldocs_other module.
 
