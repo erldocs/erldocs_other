@@ -12,8 +12,6 @@
         , du/1
 
         , git_clone/2
-        , git_branches/1
-        , git_tags/1
         , git_changeto/2
         , git_get_submodules/1
         , delete_submodules/1
@@ -49,19 +47,6 @@ git_clone (Url, Dir) ->
     eo_os:chksh(git_clone,
                 "git clone --no-checkout -- '~s' '~s'",% >/dev/null",
                 [Url,Dir], infinity).
-
-git_branches (RepoDir) ->
-    {0,Branches} = eo_os:sh(RepoDir, "git ls-remote --heads origin", []),
-    [ {shorten(Commit), Branch}
-      || {Commit, "refs/heads/"++Branch} <- Branches ].
-
-git_tags (RepoDir) ->
-    {0,Tags} = eo_os:sh(RepoDir,
-                        "git tag --list"
-                        " | while read tag; do"
-                        " echo \"$tag\t$(git rev-list \"$tag\" | head -n 1)\";"
-                        "done", []),
-    [{shorten(Commit),Tag} || {Tag,Commit} <- Tags].
 
 git_changeto (RepoDir, Commit) ->
     eo_os:chksh(git_changeto, RepoDir, "git checkout --quiet '~s'", [Commit]).
@@ -110,8 +95,5 @@ rebar_delete_deps (_RepoDir) -> %mind rebar hooks!!
     ok.%%FIXME
 
 %% Internals
-
-shorten (Commit) ->
-    lists:sublist(Commit, 7).
 
 %% End of Module.

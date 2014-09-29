@@ -25,7 +25,6 @@ sh (Fmt, Data, Timeout)
   when is_atom(Timeout); is_integer(Timeout) ->
     Cmd = lists:flatten(io_lib:format(Fmt++" 2>&1", Data)),
     run(Cmd, Timeout);
-
 sh (Dir, Fmt, Data) ->
     sh (Dir, Fmt, Data, ?ShortCmdTimeout).
 

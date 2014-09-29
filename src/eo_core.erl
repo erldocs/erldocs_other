@@ -237,14 +237,19 @@ repo_local_path (Url) ->
     filename:join(tl(Exploded)).
 
 extract_info (git, Url, TimeBegin, TmpDir) ->
+    case eo_scm:refs({git, Url, ignore}) of
+        {ok, B, T} -> Branches = B,  Tags = T;
+        %%FIXME try another SCM?
+        error ->      Branches = [], Tags = []
+    end,
     [ {name, repo_name(Url)}
     , {target_path, repo_local_path(Url)}
     , {url, Url}
     , {size_of_repo, ?u:du(TmpDir)}
     , {time_begin, TimeBegin}
     , {method, git}
-    , {branches, ?u:git_branches(TmpDir)}
-    , {tags, ?u:git_tags(TmpDir)} ];
+    , {branches, Branches}
+    , {tags, Tags} ];
 extract_info (Other, _, _, _) ->
     throw({badmethod, Other}).
 
