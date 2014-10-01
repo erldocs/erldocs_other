@@ -11,8 +11,6 @@
         , rmr_symlinks/1
         , du/1
 
-        , git_clone/2
-        , git_changeto/2
         , git_get_submodules/1
         , delete_submodules/1
 
@@ -42,14 +40,6 @@ du (Dir) ->
     [{Size,_}] = R,
     list_to_integer(Size).
 
-
-git_clone (Url, Dir) ->
-    eo_os:chksh(git_clone,
-                "git clone --no-checkout -- '~s' '~s'",% >/dev/null",
-                [Url,Dir], infinity).
-
-git_changeto (RepoDir, Commit) ->
-    eo_os:chksh(git_changeto, RepoDir, "git checkout --quiet '~s'", [Commit]).
 
 git_get_submodules (RepoDir) ->
     eo_os:shchk(git_get_submodules, RepoDir,

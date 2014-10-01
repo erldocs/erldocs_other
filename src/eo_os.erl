@@ -5,7 +5,7 @@
 
 %% eo_os: Erlang port to UNIX shell.
 
--export([ chksh/3, chksh/4
+-export([ chksh/3, chksh/4, chksh/5
         , sh/2, sh/3, sh/4 ]).
 
 -define(ShortCmdTimeout, 5 * 1000).
@@ -17,6 +17,9 @@ chksh (Name, A1, A2) ->
 
 chksh (Name, A1, A2, A3) ->
     chk(Name, sh(A1, A2, A3)).
+
+chksh (Name, A1, A2, A3, A4) ->
+    chk(Name, sh(A1, A2, A3, A4)).
 
 sh (Fmt, Data) ->
     sh (Fmt, Data, ?ShortCmdTimeout).

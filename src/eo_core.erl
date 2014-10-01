@@ -33,25 +33,23 @@ main (Conf) ->
     mkdir(DocsRoot),
     MetaFile = filename:join(Dest, "meta.terms"),
 
-    ?LOG("Cloning repo ~p into ~p\n", [Url,TmpDir]),
-    ok = clone_repo(Method, Url, TmpDir),
-
     ?LOG("Extracting meta information\n"),
-    Meta = extract_info(Method, Url, TimeBegin, TmpDir),
+    Meta = extract_info(Method, Url, TimeBegin),
     ?LOG("Writing meta to ~p\n", [MetaFile]),
     to_file(MetaFile, Meta),
 
-    ?LOG("Preparing repo for docs generation\n"),
     Tags     = kf(Meta, tags),
     Branches = kf(Meta, branches),
     TBs = Tags ++ Branches,
-    main(TBs, Method, RepoName, TmpDir,
+    main(TBs, Method, Url, RepoName, TmpDir,
          Conf, Meta, MetaFile, DocsRoot, Dest, []).
 
-main ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
+main ([{Commit,Title}|TBs], Method, Url, RepoName, TmpDir,
       Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
     ?LOG("Processing\trepo:~s\ttitle:~s\tcommit:~s\n", [RepoName,Title,Commit]),
-    TitledPath = copy_repo(Method, {Commit,Title}, RepoName, Dest),
+
+    ?LOG("Fetching repo code\n"),
+    TitledPath = copy_repo(Method, Url, {Commit,Title}, RepoName, Dest),
 
     ?LOG("Getting dependencies\n"),
     get_deps(TitledPath),
@@ -69,10 +67,10 @@ main ([{Commit,Title}|TBs], Method, RepoName, TmpDir,
     end,
 
     ?u:rmrf(filename:dirname(TitledPath)),  %% rm titled repo
-    main(TBs, Method, RepoName, TmpDir,
+    main(TBs, Method, Url, RepoName, TmpDir,
          Conf, Meta, MetaFile, DocsRoot, Dest, Treasures);
 
-main ([], _, _, TmpDir,
+main ([], _, _, _, TmpDir,
       Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
     ?LOG("Erldocs finishing up.\n"),
     MetaRest = [{discovered,Treasures}, {time_end,utc()}],
@@ -188,13 +186,11 @@ kf (Conf, Key) ->
     {Key, Value} = lists:keyfind(Key, 1, Conf),
     Value.
 
-copy_repo (git, {Commit,Title}, RepoName, DestDir) ->
+copy_repo (Method, Url, {Commit,Title}, RepoName, DestDir) ->
     Name = make_name(RepoName, Commit, Title),
     TitledPath = filename:join([DestDir, Name, RepoName]),
-    mkdir(filename:join(DestDir, Name)),
-    %% cd DestDir && cp -pr RepoName TitledPath
-    ?u:cp(DestDir, RepoName, TitledPath),
-    ?u:git_changeto(TitledPath, Commit),
+    mkdir(TitledPath),
+    eo_scm:fetch(TitledPath, {Method, Url, Title}),
     ?u:rmr_symlinks(TitledPath),
     TitledPath.
 
@@ -236,7 +232,7 @@ repo_local_path (Url) ->
     Exploded = string:tokens(Url, "/"),
     filename:join(tl(Exploded)).
 
-extract_info (git, Url, TimeBegin, TmpDir) ->
+extract_info (git, Url, TimeBegin) ->
     case eo_scm:refs({git, Url, ignore}) of
         {ok, B, T} -> Branches = B,  Tags = T;
         %%FIXME try another SCM?
@@ -245,21 +241,15 @@ extract_info (git, Url, TimeBegin, TmpDir) ->
     [ {name, repo_name(Url)}
     , {target_path, repo_local_path(Url)}
     , {url, Url}
-    , {size_of_repo, ?u:du(TmpDir)}
     , {time_begin, TimeBegin}
     , {method, git}
     , {branches, Branches}
     , {tags, Tags} ];
-extract_info (Other, _, _, _) ->
+extract_info (Other, _, _) ->
     throw({badmethod, Other}).
 
 utc () ->
     calendar:universal_time().
-
-clone_repo (git, Url, TmpDir) ->
-    ?u:git_clone(Url, TmpDir);
-clone_repo (Other, Url, _) ->
-    throw({badmethod, Other, url, Url}).
 
 
 method ("https://github.com/"++_) -> git;
