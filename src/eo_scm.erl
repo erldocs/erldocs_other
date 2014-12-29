@@ -14,13 +14,13 @@
 refs ({git, Url, _Rev}) ->
     case eo_os:sh("git ls-remote --heads --tags '~s'", [Url]) of
         {0,R} ->
-            Branches  = [{shorten(Commit), Branch}
+            Branches  = [{Commit, Branch}
                          || {Commit, "refs/heads/"++Branch} <- R],
-            DerefTags = [{ shorten(Commit)
+            DerefTags = [{ Commit
                          , string:sub_string(Tag, 1, length(Tag) -3)}
                          || {Commit, "refs/tags/"++Tag} <- R,
                             lists:suffix("^{}", Tag)],
-            NormaTags = [{shorten(Commit), Tag}
+            NormaTags = [{Commit, Tag}
                          || {Commit, "refs/tags/"++Tag} <- R,
                             not lists:suffix("^{}", Tag),
                             not lists:keymember(Tag, 2, DerefTags)],
@@ -53,8 +53,5 @@ fetch (Dir, {git, "https://bitbucket.org/"++Repo, Rev}) ->
     eo_os:chksh(fetch_rm, Dir, "rm repo.tar", []).
 
 %% Internals
-
-shorten (Commit) ->
-    lists:sublist(Commit, 7).
 
 %% End of Module.
