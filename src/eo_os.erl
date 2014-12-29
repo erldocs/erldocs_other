@@ -33,12 +33,16 @@ sh (Dir, Fmt, Data) ->
 
 sh (Dir, Fmt, Data, Timeout) ->
     {ok, PreviousDir} = file:get_cwd(),
-    ok = file:set_cwd(Dir),
+    set_cwd(Dir),
     Res = sh(Fmt, Data, Timeout),
-    ok = file:set_cwd(PreviousDir),
+    set_cwd(PreviousDir),
     Res.
 
 %% Internals
+
+set_cwd (Dir) ->
+    io:format("$ cd ~p\n", [Dir]),
+    ok = file:set_cwd(Dir).
 
 chk (Func, ShCall) ->
     case ShCall of
@@ -47,6 +51,7 @@ chk (Func, ShCall) ->
     end.
 
 run (Cmd, Timeout) ->
+    io:format("$ ~p  ~p\n", [Timeout,Cmd]),
     Port = open_port({spawn,Cmd}, [exit_status]),
     loop(Port, [], Timeout).
 

@@ -30,7 +30,7 @@ parse ([], Conf) ->
     URL  = Conf#conf.url,
     case (Dest == "") or (URL == "") of
         true  -> main([]);
-        false -> run([ {dest, Dest}
+        false -> run([ {dest, filename:absname(Dest)}
                      , {url,  URL}
                      , {base, Conf#conf.base}
                      , {logfile, Conf#conf.logfile}

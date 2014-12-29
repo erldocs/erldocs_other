@@ -7,7 +7,7 @@
 
 -export([ main/1
         , to_file/2
-        ]).
+        , gen/1 ]).
 
 -define(LOG(Str, Args), io:format(" :: "++ Str, Args)).
 -define(LOG(Str),       io:format(" :: "++ Str)).
@@ -16,22 +16,55 @@
 
 %% API
 
+gen (Conf) ->
+    RANDOM  = kf(Conf, random),
+    Odir    = kf(Conf, website_dir),
+    mkdir(Odir),
+    Tmp     = mk_name_tmp(kf(Conf,dest), RANDOM),
+    mkdir(Tmp),
+    Logfile = filename:join(Tmp, "_.txt"),
+    {ok,Meta,MetaFile} = main([ {dest, Tmp}
+                              , {logfile, Logfile} ] ++ Conf),
+    Url        = kf(Meta, url),
+    TargetPath = kf(Meta, target_path),
+    Dest = filename:join(Odir, TargetPath),
+    replace_dir(Dest),
+    ?u:mv([Logfile,MetaFile], Dest),
+    DocsRoot = filename:join(Tmp, "repo"),
+    ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
+                             , "jquery.js", "erldocs.js"
+                             , ".xml" ]),
+    Pattern = filename:join(DocsRoot, "*"),
+    ?u:mv(filelib:wildcard(Pattern), Dest),
+    rmdir(DocsRoot),
+    rmdir(Tmp),
+    {ok, Url, Dest, "http://other.erldocs.com/"++TargetPath}.
+
 main (Conf) ->
+    try
+        main_(Conf)
+    catch Type:Error ->
+            E = [?MODULE, erlang:get_stacktrace(), {Type,Error}],
+            ?LOG("Error running ~p:\n\t~p\n~p\n", E),
+            stop_output_redirection(),
+            E
+    end.
+
+main_ (Conf) ->
     start_output_redirection(kf(Conf, logfile)),
     TimeBegin = utc(),
-    URL0         = kf(Conf, url),
-    Destination0 = kf(Conf, dest),
+    URL0 = kf(Conf, url),
     {true,Url} = url(URL0),
     Method     = method(Url),
     RepoName = repo_name(Url),
 
-    Dest     = filename:absname(Destination0),
-    mkdir(Dest),
+    Dest     = kf(Conf, dest),
+%    mkdir(Dest), if nothing there, mkdir; else crash.
     TmpDir   = filename:join(Dest, RepoName),
     mkdir(TmpDir),
     DocsRoot = filename:join(Dest, "repo"),
     mkdir(DocsRoot),
-    MetaFile = filename:join(Dest, "meta.terms"),
+    MetaFile = filename:join(Dest, "meta.txt"),
 
     ?LOG("Extracting meta information\n"),
     Meta = extract_info(Method, Url, TimeBegin),
@@ -41,11 +74,15 @@ main (Conf) ->
     Tags     = kf(Meta, tags),
     Branches = kf(Meta, branches),
     TBs = Tags ++ Branches,
-    main(TBs, Method, Url, RepoName, TmpDir,
-         Conf, Meta, MetaFile, DocsRoot, Dest, []).
+    %% case TBs of
+    %%     [] -> throw({?MODULE, repo_down_or_empty});
+    %%     _ ->
+            main_(TBs, Method, Url, RepoName, TmpDir,
+                  Conf, Meta, MetaFile, DocsRoot, Dest, [])
+    .%% end.
 
-main ([{Commit,Title}|TBs], Method, Url, RepoName, TmpDir,
-      Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
+main_ ([{Commit,Title}|TBs], Method, Url, RepoName, TmpDir,
+       Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
     ?LOG("Processing\trepo:~s\ttitle:~s\tcommit:~s\n", [RepoName,Title,Commit]),
 
     ?LOG("Fetching repo code\n"),
@@ -67,17 +104,18 @@ main ([{Commit,Title}|TBs], Method, Url, RepoName, TmpDir,
     end,
 
     ?u:rmrf(filename:dirname(TitledPath)),  %% rm titled repo
-    main(TBs, Method, Url, RepoName, TmpDir,
-         Conf, Meta, MetaFile, DocsRoot, Dest, Treasures);
+    main_(TBs, Method, Url, RepoName, TmpDir,
+          Conf, Meta, MetaFile, DocsRoot, Dest, Treasures);
 
-main ([], _, _, _, TmpDir,
-      Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
+main_ ([], _, _, _, TmpDir,
+       Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
     ?LOG("Erldocs finishing up.\n"),
     MetaRest = [{discovered,Treasures}, {time_end,utc()}],
     to_file(MetaFile, MetaRest, [append]),
     ?u:rmrf(TmpDir),
     put_repo_index(Conf, DocsRoot, Meta),
-    stop_output_redirection().
+    stop_output_redirection(),
+    {ok, Meta, MetaFile}.
 
 %% Internals
 
@@ -219,8 +257,21 @@ path_exists (PathToJoin) ->
     Path = filename:join(PathToJoin),
     filelib:is_file(Path).
 
+rmdir (Dir) ->
+    ok = file:del_dir(Dir).
+
 mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
+
+replace_dir (Dir) ->
+    ?u:rmrf(Dir),
+    mkdir(Dir).
+
+mk_name_tmp (Dest, Random)
+  when is_number(Random) ->
+    mk_name_tmp(Dest, integer_to_list(Random));
+mk_name_tmp (Dest, Random) ->
+    filename:join(Dest, Random).
 
 make_name (RepoName, Commit, Branch) ->
     string:join([RepoName, Commit, Branch], "-").

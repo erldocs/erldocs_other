@@ -5,11 +5,13 @@
 
 %% erldocs_other_utils: shell utilities for erldocs_other_core.
 
--export([ rmrf/1
+-export([ rmrf/1, rm_r/1, rm_r/2
         , cp/3
         , find_files/2
+        , find_delete/2
         , rmr_symlinks/1
         , du/1
+        , mv/2
 
         , git_get_submodules/1
         , delete_submodules/1
@@ -23,6 +25,15 @@
 rmrf (Dir) ->
     eo_os:chksh(rmrf, "rm -rf '~s'", [Dir]).
 
+rm_r (Dir) ->
+    eo_os:chksh(rm_r, "rm -r '~s'", [Dir]).
+
+rm_r (Paths, ChDir) ->
+    Tildes = lists:duplicate(length(Paths), "~s"),
+    Quoted = string:join(Tildes, "' '"),
+    Cmd = "rm -r '"++ Quoted ++"'",
+    eo_os:chksh(rm_r2, ChDir, Cmd, Paths).
+
 cp (ChDir, Src, Dst) ->
     eo_os:chksh(cp, ChDir, "cp -pr '~s' '~s'", [Src,Dst]).
 
@@ -32,6 +43,12 @@ find_files (Dir, Names) ->
     {0,R} = eo_os:sh(Dir, "find . -name '"++ Quoted ++"'", Names),
     [Path || {"./"++Path} <- R].
 
+find_delete (Dir, Names) ->
+    Tildes = lists:duplicate(length(Names), "~s"),
+    Quoted = string:join(Tildes, "' -or -name '"),
+    Cmd = "find . \\( -name '"++ Quoted ++"' \\) -exec rm -r \"{}\" \\;",
+    {_Code,_} = eo_os:sh(Dir, Cmd, Names).
+
 rmr_symlinks (Dir) ->
     eo_os:chksh(rmr_symlinks, Dir, "find -P . -type l -delete", []).
 
@@ -40,9 +57,14 @@ du (Dir) ->
     [{Size,_}] = R,
     list_to_integer(Size).
 
+mv (Paths, Dir) ->
+    Tildes = lists:duplicate(length(Paths), "~s"),
+    Quoted = string:join(Tildes, "' '"),
+    eo_os:chksh(mv, "mv '"++ Quoted ++"' '~s'", Paths++[Dir]).
+
 
 git_get_submodules (RepoDir) ->
-    eo_os:shchk(git_get_submodules, RepoDir,
+    eo_os:chksh(git_get_submodules, RepoDir,
                 "git submodule update --init --recursive", [], infinity).
 
 delete_submodules (_RepoDir) -> %No git command as of yet!
