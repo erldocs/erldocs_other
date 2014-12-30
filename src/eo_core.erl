@@ -263,7 +263,7 @@ mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
 
 replace_dir (Dir) ->
-    ?u:rm_r(Dir),
+    ?u:rmrf(Dir),
     mkdir(Dir).
 
 mk_name_tmp (Dest, Random)
