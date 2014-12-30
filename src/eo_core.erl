@@ -229,7 +229,6 @@ copy_repo (Method, Url, {Commit,Title}, RepoName, DestDir) ->
     TitledPath = filename:join([DestDir, Name, RepoName]),
     mkdir(TitledPath),
     eo_scm:fetch(TitledPath, {Method, Url, Title}),
-    ?u:rmr_symlinks(TitledPath),
     TitledPath.
 
 get_deps (Path) ->

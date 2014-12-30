@@ -29,6 +29,9 @@ refs ({git, Url, _Rev}) ->
             error
     end.
 
+%% fetch/2: get content of revision of repo the fastest way possible.
+%%   Always call rmr_symlinks/1 ASAP.
+
 fetch (Dir, {git, "https://github.com/"++_=Url, Rev}) ->
     ZipUrl = Url ++ "/archive/" ++ Rev ++ ".zip",
     eo_os:chksh(fetch_curl, Dir,
@@ -36,10 +39,11 @@ fetch (Dir, {git, "https://github.com/"++_=Url, Rev}) ->
                 " --output '~s.zip' '~s'",
                 [Rev,ZipUrl], infinity),
     eo_os:chksh(fetch_unzip, Dir, "unzip -q '~s.zip'", [Rev]),
+    erldocs_other_utils:rmr_symlinks(Dir),
     %% No real need to rm Rev.zip nor *-Rev*/
     %% Following 2 lines <=> `shopt -s dotglob nullglob ; mv *-~s*/* .`
     eo_os:chksh(fetch_mv, Dir, "mv *-~s*/* .", [Rev]),
-    eo_os:sh(Dir, "mv *-~s*/.* .", [Rev]), %% Will complain about '.' & '..'
+    _ = eo_os:sh(Dir, "mv *-~s*/.* .", [Rev]), %% Will complain about '.' & '..'
     eo_os:chksh(fetch_rm, Dir, "rm -r '~s.zip' *-~s*/", [Rev,Rev]);
 
 fetch (Dir, {git, "https://bitbucket.org/"++Repo, Rev}) ->
@@ -49,7 +53,8 @@ fetch (Dir, {git, "https://bitbucket.org/"++Repo, Rev}) ->
                 "git archive --output repo.tar --remote='~s' '~s'",
                 [ArchUrl,Rev], infinity),
     eo_os:chksh(fetch_tar, Dir, "tar xf repo.tar", []),
-    eo_os:chksh(fetch_rm, Dir, "rm repo.tar", []).
+    eo_os:chksh(fetch_rm, Dir, "rm repo.tar", []),
+    erldocs_other_utils:rmr_symlinks(Dir).
 
 %% Internals
 
