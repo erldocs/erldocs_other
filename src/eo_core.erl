@@ -288,15 +288,15 @@ extract_info (git, Url, TimeBegin) ->
         %%FIXME try another SCM?
         error ->      Branches = [], Tags = []
     end,
+    io:format("Found ~p branches, ~p tags.\n",
+              [length(Branches), length(Tags)]),
     [ {name, repo_name(Url)}
     , {target_path, repo_local_path(Url)}
     , {url, Url}
     , {time_begin, TimeBegin}
     , {method, git}
     , {branches, Branches}
-    , {tags, Tags} ];
-extract_info (Other, _, _) ->
-    throw({badmethod, Other}).
+    , {tags, Tags} ].
 
 utc () ->
     calendar:universal_time().
