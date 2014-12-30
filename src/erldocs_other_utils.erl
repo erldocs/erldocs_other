@@ -77,29 +77,19 @@ delete_submodules (_RepoDir) -> %No git command as of yet!
 rebar_get_deps (RepoDir) ->
     %% Gets rid of rebar hooks (potential code execution);
     %%   copies (only) deps from rebar.config to ../rebar_deps.
-    OnlyReDepsFile = "rebar_deps",
-    TitledDir = filename:dirname(RepoDir),
-    ReFile    = filename:join(RepoDir, "rebar.config"),
-    NewReFile = filename:join(TitledDir, OnlyReDepsFile),
-    {ok, ReConf} = file:consult(ReFile),
-    case lists:keyfind(deps, 1, ReConf) of
-        false ->
-            eo_os:chksh(touch, "touch '~s'", [NewReFile]);
-        {deps, _}=Deps ->
-            eo_core:to_file(NewReFile, [Deps])
-            %% FIXME {validate_app_modules,false}
+    %% FIXME: {validate_app_modules,false}
+    ReFile = filename:join(RepoDir, "rebar.config"),
+    case read_deps(ReFile) of
+        []   -> ignore;
+        Deps -> get_deps(RepoDir, Deps)
     end,
-    case eo_os:sh(RepoDir, "rebar --config '~s' get-deps",%  >/dev/null",
-                  [NewReFile], infinity) of
-        {0, _} ->
-            case eo_os:sh(RepoDir, "ls -1 deps/", []) of
-                {0, Ls} -> io:format("~p\n",[[Dep || {Dep} <- Ls]]);
-                {_, _}  -> io:format("[]\n"), error
-            end;
-        {_, _} ->
-            io:format("[]\n"),
-            error
-    end.
+    case eo_os:sh(RepoDir, "ls -1 deps/", []) of
+        {0,R} -> Dirs0 = R;
+        {_,_} -> Dirs0 = []
+    end,
+    Dirs = [Dep || {Dep} <- Dirs0],
+    io:format("~p\n", [Dirs]),
+    Dirs.
 
 rebar_delete_deps (_RepoDir) -> %mind rebar hooks!!
     %% rebar allows you to fetch deps into a dir ≠ deps/
@@ -107,5 +97,24 @@ rebar_delete_deps (_RepoDir) -> %mind rebar hooks!!
     ok.%%FIXME
 
 %% Internals
+
+get_deps (RepoDir, Deps) ->
+    TitledDir = filename:dirname(RepoDir),
+    NewReFile = filename:join(TitledDir, "rebar_deps"),
+    eo_core:to_file(NewReFile, [{deps,Deps}]),
+    %% We don't want to stop if this fails
+    eo_os:sh(RepoDir, "rebar --config '~s' get-deps",%  >/dev/null",
+             [NewReFile], infinity).
+
+read_deps (RebarFile) ->
+    case file:consult(RebarFile) of
+        {ok, RebarConf} ->
+            case lists:keyfind(deps, 1, RebarConf) of
+                false        -> [];
+                {deps, Deps} -> Deps
+            end;
+        _ ->
+            []
+    end.
 
 %% End of Module.

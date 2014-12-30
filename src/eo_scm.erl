@@ -37,7 +37,6 @@ fetch (Dir, {git, "https://github.com/"++_=Url, Rev}) ->
                 [Rev,ZipUrl], infinity),
     eo_os:chksh(fetch_unzip, Dir, "unzip -q '~s.zip'", [Rev]),
     %% No real need to rm Rev.zip nor *-Rev*/
-    io:format("cd: ~p, mv *-~s*/* .\n", [Dir,Rev]),%%
     %% Following 2 lines <=> `shopt -s dotglob nullglob ; mv *-~s*/* .`
     eo_os:chksh(fetch_mv, Dir, "mv *-~s*/* .", [Rev]),
     eo_os:sh(Dir, "mv *-~s*/.* .", [Rev]), %% Will complain about '.' & '..'
