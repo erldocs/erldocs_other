@@ -103,8 +103,9 @@ get_deps (RepoDir, Deps) ->
     NewReFile = filename:join(TitledDir, "rebar_deps"),
     eo_core:to_file(NewReFile, [{deps,Deps}]),
     %% We don't want to stop if this fails
-    eo_os:sh(RepoDir, "rebar --config '~s' get-deps",%  >/dev/null",
-             [NewReFile], infinity).
+    _ = eo_os:sh(RepoDir, "rebar --config '~s' get-deps",%  >/dev/null",
+                 [NewReFile], infinity),
+    rmr_symlinks(RepoDir).
 
 read_deps (RebarFile) ->
     case file:consult(RebarFile) of

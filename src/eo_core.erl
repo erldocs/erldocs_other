@@ -103,7 +103,7 @@ main_ ([{Commit,Title}|TBs], Method, Url, RepoName, TmpDir,
         _ ->       Treasures = [Treasure|Acc]
     end,
 
-    ?u:rmrf(filename:dirname(TitledPath)),  %% rm titled repo
+    ?u:rm_r(filename:dirname(TitledPath)),  %% rm titled repo
     main_(TBs, Method, Url, RepoName, TmpDir,
           Conf, Meta, MetaFile, DocsRoot, Dest, Treasures);
 
@@ -112,7 +112,7 @@ main_ ([], _, _, _, TmpDir,
     ?LOG("Erldocs finishing up.\n"),
     MetaRest = [{discovered,Treasures}, {time_end,utc()}],
     to_file(MetaFile, MetaRest, [append]),
-    ?u:rmrf(TmpDir),
+    ?u:rm_r(TmpDir),
     put_repo_index(Conf, DocsRoot, Meta),
     stop_output_redirection(),
     {ok, Meta, MetaFile}.
@@ -134,7 +134,7 @@ list_titles (DocsRoot, Titles) ->
                       true  ->
                           "<a href=\""++Branch++"\">"++Branch++"</a>";
                       false ->
-                          ?u:rmrf(filename:join(DocsRoot, Branch)),
+                          ?u:rm_r(filename:join(DocsRoot, Branch)),
                           Branch
                   end
               end || {_,Branch} <- Titles ],
@@ -263,7 +263,7 @@ mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
 
 replace_dir (Dir) ->
-    ?u:rmrf(Dir),
+    ?u:rm_r(Dir),
     mkdir(Dir).
 
 mk_name_tmp (Dest, Random)
