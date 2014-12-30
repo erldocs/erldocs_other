@@ -16,6 +16,8 @@
         , git_get_submodules/1
         , delete_submodules/1
 
+        , hg_test/1
+
         , rebar_get_deps/1
         , rebar_delete_deps/1
         ]).
@@ -73,6 +75,12 @@ delete_submodules (_RepoDir) -> %No git command as of yet!
     impl.%%FIXME
 
 %%FIXME git config --get remote.origin.url (for each remote)
+
+hg_test (Url) ->
+    case eo_os:sh("hg identify '~s'", [Url]) of
+        {0,_} -> true;
+        {255,_} -> false
+    end.
 
 rebar_get_deps (RepoDir) ->
     %% Gets rid of rebar hooks (potential code execution);

@@ -284,9 +284,15 @@ repo_local_path (Url) ->
 
 extract_info (git, Url, TimeBegin) ->
     case eo_scm:refs({git, Url, ignore}) of
-        {ok, B, T} -> Branches = B,  Tags = T;
-        %%FIXME try another SCM?
-        error ->      Branches = [], Tags = []
+        {ok, B, T} ->
+            Branches = B,  Tags = T;
+        error ->
+            %%FIXME try another SCM?
+            case ?u:hg_test(Url) of
+                true  -> io:format("SCM is hg: not yet supported.\n");
+                false -> io:format("Repo may as well not exist.\n"), ignore_for_now
+            end,
+            Branches = [], Tags = []
     end,
     io:format("Found ~p branches, ~p tags.\n",
               [length(Branches), length(Tags)]),
