@@ -9,6 +9,8 @@
         , to_file/2
         , gen/1 ]).
 
+-include("eo_common.hrl").
+
 -define(LOG(Str, Args), io:format(" :: "++ Str, Args)).
 -define(LOG(Str),       io:format(" :: "++ Str)).
 
@@ -71,9 +73,7 @@ main_ (Conf) ->
     ?LOG("Writing meta to ~p\n", [MetaFile]),
     to_file(MetaFile, Meta),
 
-    Tags     = kf(Meta, tags),
-    Branches = kf(Meta, branches),
-    TBs = Tags ++ Branches,
+    TBs = kf(Meta, revisions),
     %% case TBs of
     %%     [] -> throw({?MODULE, repo_down_or_empty});
     %%     _ ->
@@ -81,36 +81,37 @@ main_ (Conf) ->
                   Conf, Meta, MetaFile, DocsRoot, Dest, [])
     .%% end.
 
-main_ ([{Commit,Title}|TBs], Method, Url, RepoName, TmpDir,
-       Conf, Meta, MetaFile, DocsRoot, Dest, Acc) ->
-    ?LOG("Processing\trepo:~s\ttitle:~s\tcommit:~s\n", [RepoName,Title,Commit]),
+main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
+       Conf, Meta, MetaFile, DocsRoot, Dest, Discovered0) ->
+    ?LOG("Processing\trepo:~s\trev:~p\n", [RepoName,TB]),
 
     ?LOG("Fetching repo code\n"),
-    TitledPath = copy_repo(Method, Url, {Commit,Title}, RepoName, Dest),
+    TitledPath = copy_repo(TB, Method, Url, RepoName, Dest),
 
     ?LOG("Getting dependencies\n"),
-    get_deps(TitledPath),
+    Deps = get_deps(TitledPath), %% FIXME: store deps per TB
+
     %%FIXME `make` cloned repo (using shell's redirection & sandbox)
 
     %%FIXME think about rmrf TitlePath/.git/, deps/*/.git/ & submodules'.
-    erldocs(Conf, DocsRoot, Title, TitledPath),
+    erldocs(Conf, DocsRoot, TB, TitledPath),
 
     ?LOG("Discovering other repos\n"),
     %%del_deps(TitledPath),
-    Treasure = repo_discovery(Title, TitledPath),
-    case Treasure of
-        {_, []} -> Treasures = Acc;
-        _ ->       Treasures = [Treasure|Acc]
+    case repo_discovery(TB, TitledPath) of
+        {_, []}  -> Discovered = Discovered0;
+        Treasure -> Discovered = [Treasure|Discovered0]
     end,
 
     ?u:rm_r(filename:dirname(TitledPath)),  %% rm titled repo
     main_(TBs, Method, Url, RepoName, TmpDir,
-          Conf, Meta, MetaFile, DocsRoot, Dest, Treasures);
+          Conf, Meta, MetaFile, DocsRoot, Dest, Discovered);
 
-main_ ([], _, _, _, TmpDir,
-       Conf, Meta, MetaFile, DocsRoot, _, Treasures) ->
+main_ ([], _Method, _Url, _RepoName, TmpDir,
+       Conf, Meta, MetaFile, DocsRoot, _Dest, Treasures) ->
     ?LOG("Erldocs finishing up.\n"),
-    MetaRest = [{discovered,Treasures}, {time_end,utc()}],
+    MetaRest = [ {discovered, Treasures}
+               , {time_end, utc()} ],
     to_file(MetaFile, MetaRest, [append]),
     ?u:rm_r(TmpDir),
     put_repo_index(Conf, DocsRoot, Meta),
@@ -120,24 +121,23 @@ main_ ([], _, _, _, TmpDir,
 %% Internals
 
 html_index (DocsRoot, Meta) ->
-    Tags     = kf(Meta, tags),
-    Branches = kf(Meta, branches),
+    Revs = kf(Meta, revisions),
+    Tags     = [Rev || Rev <- Revs, Rev#rev.type == tag   ],
+    Branches = [Rev || Rev <- Revs, Rev#rev.type == branch],
     "<h3 id=\"tags\">Tags</h3>"
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>"
         ++ "<br/>"
         ++ "\n\t<h3 id=\"branches\">Branches</h3>"
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>".
 
-list_titles (DocsRoot, Titles) ->
-    Items = [ begin
-                  case path_exists([DocsRoot, Branch, "index.html"]) of
-                      true  ->
-                          "<a href=\""++Branch++"\">"++Branch++"</a>";
-                      false ->
-                          ?u:rm_r(filename:join(DocsRoot, Branch)),
-                          Branch
-                  end
-              end || {_,Branch} <- Titles ],
+list_titles (DocsRoot, Revs) ->
+    Items = [ case path_exists([DocsRoot, Title, "index.html"]) of
+                  true  ->
+                      "<a href=\""++Title++"\">"++Title++"</a>";
+                  false ->
+                      ?u:rm_r(filename:join(DocsRoot, Title)),
+                      Title
+              end || #rev{id=Title} <- Revs ],
     case Items of
         [] -> "(none)";
         _  ->
@@ -156,13 +156,13 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     {ok, CSS}  = css_dtl:render([]),
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
-repo_discovery (Title, RepoPath) ->
+repo_discovery (Rev, RepoPath) ->
     FilesFound = filelib:wildcard("rebar.config*", RepoPath)
         ++ [ File || File <- [ "Makefile"
                              , ".gitmodules" ],
                      path_exists([RepoPath,File]) ],
     UrlsFound = search_files(RepoPath, FilesFound),
-    {Title, lists:usort(lists:filtermap(fun url/1, UrlsFound))}.
+    {Rev, lists:usort(lists:filtermap(fun url/1, UrlsFound))}.
 
 search_files (RepoPath, Files) ->
     lists:flatmap(
@@ -191,7 +191,7 @@ discover_urls (Seps, Mid, Bin) ->
         nomatch -> []
     end.
 
-erldocs (Conf, DocsRoot, Branch, Path) ->
+erldocs (Conf, DocsRoot, #rev{id=Branch}, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
     ?LOG("Generating erldocs into ~s\n", [DocsDest]),
     mkdir(DocsDest),
@@ -224,11 +224,12 @@ kf (Conf, Key) ->
     {Key, Value} = lists:keyfind(Key, 1, Conf),
     Value.
 
-copy_repo (Method, Url, {Commit,Title}, RepoName, DestDir) ->
-    Name = make_name(RepoName, Commit, Title),
+copy_repo (Rev = #rev{id=Branch, type=RevType},
+           Method, Url, RepoName, DestDir) ->
+    Name = make_name(RepoName, Branch, RevType),
     TitledPath = filename:join([DestDir, Name, RepoName]),
     mkdir(TitledPath),
-    eo_scm:fetch(TitledPath, {Method, Url, Title}),
+    eo_scm:fetch(TitledPath, {Method,Url,Rev}),
     TitledPath.
 
 get_deps (Path) ->
@@ -272,8 +273,12 @@ mk_name_tmp (Dest, Random)
 mk_name_tmp (Dest, Random) ->
     filename:join(Dest, Random).
 
-make_name (RepoName, Commit, Branch) ->
-    string:join([RepoName, Commit, Branch], "-").
+make_name (RepoName, Branch, RevType) ->
+    case RevType of
+        tag    -> RevKind = "tag";
+        branch -> RevKind = "branch"
+    end,
+    string:join([RepoName,RevKind,Branch], "-").
 
 repo_name (Url) ->
     lists:last(string:tokens(Url, "/")).
@@ -282,42 +287,56 @@ repo_local_path (Url) ->
     Exploded = string:tokens(Url, "/"),
     filename:join(tl(Exploded)).
 
-extract_info (git, Url, TimeBegin) ->
-    case eo_scm:refs({git, Url, ignore}) of
-        {ok, B, T} ->
-            Branches = B,  Tags = T;
+extract_info (Method, Url, TimeBegin) ->
+    case eo_scm:refs({Method, Url, '_'}) of
+        {ok, TBs} -> TBs;
         error ->
             %%FIXME try another SCM?
             case ?u:hg_test(Url) of
                 true  -> io:format("SCM is hg: not yet supported.\n");
                 false -> io:format("Repo may as well not exist.\n"), ignore_for_now
             end,
-            Branches = [], Tags = []
+            TBs = []
     end,
-    io:format("Found ~p branches, ~p tags.\n",
-              [length(Branches), length(Tags)]),
+    io:format("-> ~p branches, ~p tags\n", [count(branch,TBs),count(tag,TBs)]),
     [ {name, repo_name(Url)}
     , {target_path, repo_local_path(Url)}
     , {url, Url}
     , {time_begin, TimeBegin}
-    , {method, git}
-    , {branches, Branches}
-    , {tags, Tags} ].
+    , {method, Method}
+    , {revisions, TBs} ].
 
 utc () ->
     calendar:universal_time().
 
+count (Field, Revs) ->
+    FieldCounter =
+        fun (Rev, Acc) ->
+                case Rev#rev.type of
+                    Field -> Acc + 1;
+                    _Else -> Acc
+                end
+        end,
+    lists:foldl(FieldCounter, 0, Revs).
+
 
 method ("https://github.com/"++_) -> git;
-method ("https://bitbucket.org/"++_) -> git.
+method ("https://bitbucket.org/"++_) -> git;
+method ("https://code.google.com/p/"++_) -> svn.
 
 url (URL0) ->
     Url = string:to_lower(URL0),
-    case re:run(Url, "(github.com|bitbucket.org)[:/]([^:/]+)/([^/]+)",
+    case re:run(Url, "(github\\.com|bitbucket\\.org)[:/]([^:/]+)/([^/]+)",
                 [{capture,all_but_first,list}]) of
         {match, [Site,User,Name]} ->
             {true, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
-        nomatch -> false
+        nomatch ->
+            case re:run(Url, "code\\.google\\.com/p/([^/]+)",
+                        [{capture,all_but_first,list}]) of
+                {match, [Name]} ->
+                    {true, "https://code.google.com/p/"++Name};
+                nomatch -> false
+            end
     end.
 
 trim_dotgit (Str) ->

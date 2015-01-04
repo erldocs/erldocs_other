@@ -12,14 +12,14 @@
 
 %% API
 
-chksh (Name, A1, A2) ->
-    chk(Name, sh(A1, A2)).
+chksh (Name, Fmt, Data) ->
+    chk(Name, sh(Fmt, Data)).
 
 chksh (Name, A1, A2, A3) ->
     chk(Name, sh(A1, A2, A3)).
 
-chksh (Name, A1, A2, A3, A4) ->
-    chk(Name, sh(A1, A2, A3, A4)).
+chksh (Name, Dir, Fmt, Data, Timeout) ->
+    chk(Name, sh(Dir, Fmt, Data, Timeout)).
 
 sh (Fmt, Data) ->
     sh (Fmt, Data, ?ShortCmdTimeout).
@@ -51,7 +51,7 @@ chk (Func, ShCall) ->
     end.
 
 run (Cmd, Timeout) ->
-    io:format("$ ~p  ~p\n", [Timeout,Cmd]),
+    io:format("$ ~p  `~s`\n", [Timeout,Cmd]),
     Port = open_port({spawn,Cmd}, [exit_status]),
     loop(Port, [], Timeout).
 
