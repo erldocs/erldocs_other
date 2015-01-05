@@ -87,8 +87,7 @@ fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{id=Branch}}) ->
     %% FIXME: use erl_tar:extract/1,2
     eo_os:chksh(fetch_tar, Dir, "tar xf repo.tar", []),
     erldocs_other_utils:rmr_symlinks(Dir),
-    %% FIXME: use file:delete/1 ?
-    eo_os:chksh(fetch_rm, Dir, "rm repo.tar", []);
+    file:delete(filename:join(Dir, "repo.tar"));
 
 fetch (Dir, {svn, "https://code.google.com/p/"++Name, Rev}) ->
     case Rev#rev.type of
