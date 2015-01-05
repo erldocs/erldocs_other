@@ -47,7 +47,7 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
             {Bs0,Ts0} = lists:splitwith(NotDot, tl(Dirs)),
             Bs = [#rev{id=B, commit=Co, type=branch} || {Co,B} <- Bs0],
             Ts = [#rev{id=T, commit=Co, type=tag}    || {Co,T} <- tl(Ts0)],
-            %% What about trunk? (eg. https://code.google.com/p/plists/)
+            %% FIXME: What about trunk? (eg. https://code.google.com/p/plists/)
             {ok, Ts++Bs};
         {1,_} ->
             error  %% Not this kind of repo or does not exist.
@@ -71,12 +71,11 @@ fetch (Dir, {git, "https://github.com/"++_=Url, Rev}) ->
                 "curl --fail --silent --show-error --location"
                 " --output '~s' '~s'",
                 [Zipped,ZipUrl], infinity),
-    %% FIXME: use zip:extract/1,2
-    eo_os:chksh(fetch_unzip, Dir, "unzip -q '~s'", [Zipped]),
+    AbsZipped = filename:join(Dir, Zipped),
+    {ok,_} = zip:extract(AbsZipped, [{cwd,Dir}]),
     erldocs_other_utils:rmr_symlinks(Dir),
     erldocs_other_utils:mv_all(UnZipped, Dir),
-    %% No real need to rm Rev.zip nor *-Rev*/
-    erldocs_other_utils:rm_r([Zipped,UnZipped], Dir);
+    file:delete(AbsZipped);
 
 fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{id=Branch}}) ->
     %% Note: git-archive does not accept SHA1s
@@ -84,10 +83,10 @@ fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{id=Branch}}) ->
     eo_os:chksh('fetch_git-archive', Dir,
                 "git archive --output repo.tar --remote='~s' '~s'",
                 [ArchUrl,Branch], infinity),
-    %% FIXME: use erl_tar:extract/1,2
-    eo_os:chksh(fetch_tar, Dir, "tar xf repo.tar", []),
+    AbsTarred = filename:join(Dir, "repo.tar"),
+    ok = erl_tar:extract(AbsTarred, [{cwd,Dir}]),
     erldocs_other_utils:rmr_symlinks(Dir),
-    file:delete(filename:join(Dir, "repo.tar"));
+    file:delete(AbsTarred);
 
 fetch (Dir, {svn, "https://code.google.com/p/"++Name, Rev}) ->
     case Rev#rev.type of
