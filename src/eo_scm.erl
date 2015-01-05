@@ -47,7 +47,7 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
             {Bs0,Ts0} = lists:splitwith(NotDot, tl(Dirs)),
             Bs = [#rev{id=B, commit=Co, type=branch} || {Co,B} <- Bs0],
             Ts = [#rev{id=T, commit=Co, type=tag}    || {Co,T} <- tl(Ts0)],
-            % Where do we put trunk?
+            %% What about trunk? (eg. https://code.google.com/p/plists/)
             {ok, Ts++Bs};
         {1,_} ->
             error  %% Not this kind of repo or does not exist.
@@ -58,22 +58,29 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 %% fetch/2: get content of revision of repo the fastest way possible.
 %%   Always call rmr_symlinks/1 ASAP.
 
-fetch (Dir, {git, "https://github.com/"++_=Url, #rev{id=Branch}}) ->
-    ZipUrl = Url ++ "/archive/" ++ Branch ++ ".zip",
+fetch (Dir, {git, "https://github.com/"++_=Url, Rev}) ->
+    Title = Rev#rev.id,
+    Name = lists:last(string:tokens(Url, "/")),
+    case {Rev#rev.type, Title} of
+        {tag, "v"++Shortened} -> UnZipped = Name ++"-"++ Shortened;
+        _                     -> UnZipped = Name ++"-"++ Title
+    end,
+    Zipped = Title ++".zip",
+    ZipUrl = Url ++"/archive/"++ Zipped,
     eo_os:chksh(fetch_curl, Dir,
                 "curl --fail --silent --show-error --location"
-                " --output '~s.zip' '~s'",
-                [Branch,ZipUrl], infinity),
+                " --output '~s' '~s'",
+                [Zipped,ZipUrl], infinity),
     %% FIXME: use zip:extract/1,2
-    eo_os:chksh(fetch_unzip, Dir, "unzip -q '~s.zip'", [Branch]),
+    eo_os:chksh(fetch_unzip, Dir, "unzip -q '~s'", [Zipped]),
     erldocs_other_utils:rmr_symlinks(Dir),
-    erldocs_other_utils:mv_all("*-~s*/", Branch, Dir), %% FIXME: get rid of wildcard
+    erldocs_other_utils:mv_all(UnZipped, Dir),
     %% No real need to rm Rev.zip nor *-Rev*/
-    eo_os:chksh(fetch_rm, Dir, "rm -r '~s.zip' *-~s*/", [Branch,Branch]);
+    erldocs_other_utils:rm_r([Zipped,UnZipped], Dir);
 
 fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{id=Branch}}) ->
     %% Note: git-archive does not accept SHA1s
-    ArchUrl = "git@bitbucket.org:" ++ Repo,
+    ArchUrl = "git@bitbucket.org:"++ Repo,
     eo_os:chksh('fetch_git-archive', Dir,
                 "git archive --output repo.tar --remote='~s' '~s'",
                 [ArchUrl,Branch], infinity),
@@ -94,7 +101,7 @@ fetch (Dir, {svn, "https://code.google.com/p/"++Name, Rev}) ->
     eo_os:chksh(fetch_svn, Dir, "svn export -r '~s' '~s'",
                 [Commit,SvnUrl], infinity),
     erldocs_other_utils:rmr_symlinks(Dir),
-    erldocs_other_utils:mv_all("'~s'/", Title, Dir).
+    erldocs_other_utils:mv_all(Title, Dir).
 
 %% Internals
 

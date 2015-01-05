@@ -12,7 +12,7 @@
         , rmr_symlinks/1
         , du/1
         , mv/2
-        , mv_all/3
+        , mv_all/2
 
         , git_get_submodules/1
         , delete_submodules/1
@@ -65,10 +65,10 @@ mv (Paths, Dir) ->
     Quoted = string:join(Tildes, "' '"),
     eo_os:chksh(mv, "mv '"++ Quoted ++"' '~s'", Paths++[Dir]).
 
-mv_all (Fmt, Src, Dst) ->
+mv_all (Src, Dst) ->
     %% <>  mv {Src/*,Src/.*} Dst/  But silent about . and ..
     eo_os:chksh(mv_all, Dst,
-                "find "++Fmt++" -mindepth 1 -maxdepth 1 -exec mv -t . -- {} +",
+                "find '~s' -mindepth 1 -maxdepth 1 -exec mv -t . -- {} +",
                 [Src]).
 
 
