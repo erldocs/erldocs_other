@@ -6,7 +6,12 @@
 %% eo_scm: SCM read-only commands.
 
 -export([ refs/1
-        , fetch/2 ]).
+        , fetch/2
+        , repo_name/1
+        , repo_local_path/1
+        , method/1
+        , url/1
+        ]).
 
 -include("eo_common.hrl").
 
@@ -101,6 +106,39 @@ fetch (Dir, {svn, "https://code.google.com/p/"++Name, Rev}) ->
     erldocs_other_utils:rmr_symlinks(Dir),
     erldocs_other_utils:mv_all(Title, Dir).
 
+
+repo_name (Url) ->
+    lists:last(string:tokens(Url, "/")).
+
+repo_local_path (Url) ->
+    Exploded = string:tokens(Url, "/"),
+    filename:join(tl(Exploded)).
+
+
+method ("https://github.com/"++_) -> git;
+method ("https://bitbucket.org/"++_) -> git;
+method ("https://code.google.com/p/"++_) -> svn.
+
+%% lists:filtermap/2-ready output.
+url (URL0) ->
+    Url = string:to_lower(URL0),
+    case find("(github\\.com|bitbucket\\.org)[:/]([^:/]+)/([^/]+)", Url) of
+        {match, [Site,User,Name]} ->
+            {true, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
+        nomatch ->
+            case find("code\\.google\\.com/p/([^/]+)", Url) of
+                {match, [Name]} ->
+                    {true, "https://code.google.com/p/"++Name};
+                nomatch -> false
+            end
+    end.
+
 %% Internals
+
+find (RegExp, Subject) ->
+    re:run(Subject, RegExp, [{capture,all_but_first,list}]).
+
+trim_dotgit (Str) ->
+    filename:basename(Str, ".git").
 
 %% End of Module.

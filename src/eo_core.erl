@@ -56,9 +56,9 @@ main_ (Conf) ->
     start_output_redirection(kf(Conf, logfile)),
     TimeBegin = utc(),
     URL0 = kf(Conf, url),
-    {true,Url} = url(URL0),
-    Method     = method(Url),
-    RepoName = repo_name(Url),
+    {true,Url} = eo_scm:url(URL0),
+    Method     = eo_scm:method(Url),
+    RepoName   = eo_scm:repo_name(Url),
 
     Dest     = kf(Conf, dest),
 %    mkdir(Dest), if nothing there, mkdir; else crash.
@@ -162,7 +162,7 @@ repo_discovery (Rev, RepoPath) ->
                              , ".gitmodules" ],
                      path_exists([RepoPath,File]) ],
     UrlsFound = search_files(RepoPath, FilesFound),
-    {Rev, lists:usort(lists:filtermap(fun url/1, UrlsFound))}.
+    {Rev, lists:usort(lists:filtermap(fun eo_scm:url/1, UrlsFound))}.
 
 search_files (RepoPath, Files) ->
     lists:flatmap(
@@ -280,13 +280,6 @@ make_name (RepoName, Branch, RevType) ->
     end,
     string:join([RepoName,RevKind,Branch], "-").
 
-repo_name (Url) ->
-    lists:last(string:tokens(Url, "/")).
-
-repo_local_path (Url) ->
-    Exploded = string:tokens(Url, "/"),
-    filename:join(tl(Exploded)).
-
 extract_info (Method, Url, TimeBegin) ->
     case eo_scm:refs({Method, Url, '_'}) of
         {ok, TBs} -> TBs;
@@ -299,8 +292,8 @@ extract_info (Method, Url, TimeBegin) ->
             TBs = []
     end,
     io:format("-> ~p branches, ~p tags\n", [count(branch,TBs),count(tag,TBs)]),
-    [ {name, repo_name(Url)}
-    , {target_path, repo_local_path(Url)}
+    [ {name, eo_scm:repo_name(Url)}
+    , {target_path, eo_scm:repo_local_path(Url)}
     , {url, Url}
     , {time_begin, TimeBegin}
     , {method, Method}
@@ -318,29 +311,6 @@ count (Field, Revs) ->
                 end
         end,
     lists:foldl(FieldCounter, 0, Revs).
-
-
-method ("https://github.com/"++_) -> git;
-method ("https://bitbucket.org/"++_) -> git;
-method ("https://code.google.com/p/"++_) -> svn.
-
-url (URL0) ->
-    Url = string:to_lower(URL0),
-    case re:run(Url, "(github\\.com|bitbucket\\.org)[:/]([^:/]+)/([^/]+)",
-                [{capture,all_but_first,list}]) of
-        {match, [Site,User,Name]} ->
-            {true, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
-        nomatch ->
-            case re:run(Url, "code\\.google\\.com/p/([^/]+)",
-                        [{capture,all_but_first,list}]) of
-                {match, [Name]} ->
-                    {true, "https://code.google.com/p/"++Name};
-                nomatch -> false
-            end
-    end.
-
-trim_dotgit (Str) ->
-    filename:basename(Str, ".git").
 
 
 to_file (Path, Data) ->
