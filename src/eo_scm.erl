@@ -25,14 +25,13 @@ refs ({git, Url, _Rev}) ->
         {0,R} ->
             Branches  = [#rev{commit=Commit, type=branch, id=Branch}
                          || {Commit, "refs/heads/"++Branch} <- R],
-            DerefTags = [#rev{commit=Commit, type=tag
-                             , id=string:sub_string(Tag, 1, length(Tag) -3)}
+            DerefTags = [#rev{commit=Commit, type=tag, id=dereference(Tag)}
                          || {Commit, "refs/tags/"++Tag} <- R,
                             lists:suffix("^{}", Tag)],
             NormaTags = [#rev{commit=Commit, type=tag, id=Tag}
                          || {Commit, "refs/tags/"++Tag} <- R,
                             not lists:suffix("^{}", Tag),
-                            not lists:keymember(Tag, 2, DerefTags)],
+                            not lists:keymember(Tag, #rev.id, DerefTags)],
             {ok, DerefTags++NormaTags++Branches};
         {_,_} ->
             error  %% Not this kind of repo or does not exist.
@@ -140,5 +139,13 @@ find (RegExp, Subject) ->
 
 trim_dotgit (Str) ->
     filename:basename(Str, ".git").
+
+dereference (Tag0) ->
+    DerefToken = "^{}",
+    Tag = string:sub_string(Tag0, 1, length(Tag0) - length(DerefToken)),
+    case lists:suffix(DerefToken, Tag) of
+        false -> Tag;
+        true  -> dereference(Tag)
+    end.
 
 %% End of Module.
