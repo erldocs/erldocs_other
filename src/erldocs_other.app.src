@@ -2,9 +2,12 @@
 , erldocs_other
 , [ {description, "Generate HTML code for other.erldocs.com"}
   , {vsn, "1"}
-  , {modules, [ erldocs_other
-              , erldocs_other_core
+  , {modules, [ eo_core
+              , eo_os
+              , eo_scm
+              , erldocs_other
               , erldocs_other_utils
+              , iolists
               ]}
   , {registered, []}
   , {applications, [ kernel
