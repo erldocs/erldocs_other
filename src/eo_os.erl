@@ -47,7 +47,10 @@ set_cwd (Dir) ->
 chk (Func, ShCall) ->
     case ShCall of
         {0, _} -> ok;
-        {Code, Stdout} -> throw({sh,Func,error,Code,Stdout})
+        {Code, Stdout0} ->
+            Stdout = iolists:filtermap(fun (X) -> X < 127 end, Stdout0),
+            io:format("~p\n", [Stdout]),
+            throw({sh,Func,error,Code,Stdout0})
     end.
 
 run (Cmd, Timeout) ->
