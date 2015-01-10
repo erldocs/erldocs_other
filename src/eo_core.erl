@@ -18,6 +18,8 @@
 
 %% API
 
+%% gen/1: on error puts log and meta then throws.
+
 gen (Conf) ->
     RANDOM  = kf(Conf, random),
     Odir    = kf(Conf, website_dir),
@@ -25,13 +27,19 @@ gen (Conf) ->
     Tmp     = mk_name_tmp(kf(Conf,dest), RANDOM),
     mkdir(Tmp),
     Logfile = filename:join(Tmp, "_.txt"),
-    {ok,Meta,MetaFile} = main([ {dest, Tmp}
-                              , {logfile, Logfile} ] ++ Conf),
-    Url        = kf(Meta, url),
-    TargetPath = kf(Meta, target_path),
+    case main([ {dest, Tmp}
+              , {logfile, Logfile} ] ++ Conf) of
+        {ok, Meta, _MetaFile} ->
+            Url        = kf(Meta, url),
+            TargetPath = kf(Meta, target_path);
+        _Error ->
+            URL0 = kf(Conf, url),
+            {true,Url} = eo_scm:url(URL0),
+            TargetPath = eo_scm:repo_local_path(Url)
+    end,
     Dest = filename:join(Odir, TargetPath),
     replace_dir(Dest),
-    ?u:mv([Logfile,MetaFile], Dest),
+    ?u:mv([Logfile,metafile(Tmp)], Dest),
     DocsRoot = filename:join(Tmp, "repo"),
     ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
                              , "jquery.js", "erldocs.js"
@@ -66,7 +74,7 @@ main_ (Conf) ->
     mkdir(TmpDir),
     DocsRoot = filename:join(Dest, "repo"),
     mkdir(DocsRoot),
-    MetaFile = filename:join(Dest, "meta.txt"),
+    MetaFile = metafile(Dest),
 
     ?LOG("Extracting meta information\n"),
     Meta = extract_info(Method, Url, TimeBegin),
@@ -279,6 +287,9 @@ make_name (RepoName, Branch, RevType) ->
         branch -> RevKind = "branch"
     end,
     string:join([RepoName,RevKind,Branch], "-").
+
+metafile (Dest) ->
+    filename:join(Dest, "meta.txt").
 
 extract_info (Method, Url, TimeBegin) ->
     case eo_scm:refs({Method, Url, '_'}) of
