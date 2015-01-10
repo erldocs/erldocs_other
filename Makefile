@@ -14,5 +14,6 @@ clean: clean-ebin
 distclean: clean clean-escript clean-deps
 	$(if $(wildcard erl.mk), rm erl.mk   )
 	$(if $(wildcard docs/), rm -rf docs/ )
+	$(if $(wildcard erl_crash.dump), rm erl_crash.dump)
 
 debug: debug-app
