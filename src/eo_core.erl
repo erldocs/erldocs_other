@@ -3,22 +3,22 @@
 %% -*- coding: utf-8 -*-
 -module(eo_core).
 
-%% erldocs_other_core: main logic of the erldocs_other module.
+%% eo_core: main logic of the erldocs_other module.
 
 -export([ main/1
         , to_file/2
         , gen/1 ]).
 
--include("eo_common.hrl").
+-include("erldocs_other.hrl").
 
 -define(LOG(Str, Args), io:format(" :: "++ Str, Args)).
 -define(LOG(Str),       io:format(" :: "++ Str)).
 
--define(u, erldocs_other_utils).
+-define(u, eo_util).
 
 %% API
 
-%% gen/1: on error puts log and meta then throws.
+%% @doc On error puts log and meta then throws.
 
 gen (Conf) ->
     RANDOM  = kf(Conf, random),

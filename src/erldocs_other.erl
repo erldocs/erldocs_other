@@ -3,7 +3,7 @@
 %% -*- coding: utf-8 -*-
 -module(erldocs_other).
 
-%% erldocs_other: escript rendering a repos' erldocs.
+%% erldocs_other: render a repo's erldocs. Can be used as an escript.
 
 -export([ main/1 ]).
 

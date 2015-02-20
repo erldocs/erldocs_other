@@ -13,12 +13,21 @@
         , url/1
         ]).
 
--include("eo_common.hrl").
+-export_type([ method/0
+             , repo_url/0
+             , source/0
+             ]).
+
+-include("erldocs_other.hrl").
+
+-type method() :: git | svn.
+-type repo_url() :: string().
+-type source() :: {method(), repo_url(), rev()}.
 
 %% API
 
-%% refs/1: get revisions information of repo the fastest way possible
-%%   Return Tags ++ Branches :: [#rev{}]
+%% @doc Get revisions information of repo the fastest way possible
+-spec refs (source()) -> {ok, [rev()]} | error.
 
 refs ({git, Url, _Rev}) ->
     case eo_os:sh("git ls-remote --heads --tags '~s'", [Url]) of
@@ -59,13 +68,15 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 % SVN `svn help log`
 
 
-%% fetch/2: get content of revision of repo the fastest way possible.
-%%   Always call rmr_symlinks/1 ASAP.
+%% @doc Get content of revision of repo the fastest way possible.
+%%   Implentation note: Always call rmr_symlinks/1 ASAP.
+-spec fetch (filelib:dirname(), source()) -> ok.
 
-fetch (Dir, {git, "https://github.com/"++_=Url, Rev}) ->
-    Title = Rev#rev.id,
+fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title
+                                                    , type = Type }}) ->
     Name = lists:last(string:tokens(Url, "/")),
-    case {Rev#rev.type, Title} of
+    %% GitHub is special…
+    case {Type, Title} of
         {tag, "v"++Shortened} -> UnZipped = Name ++"-"++ Shortened;
         _                     -> UnZipped = Name ++"-"++ Title
     end,
@@ -77,11 +88,11 @@ fetch (Dir, {git, "https://github.com/"++_=Url, Rev}) ->
                 [Zipped,ZipUrl], infinity),
     AbsZipped = filename:join(Dir, Zipped),
     {ok,_} = zip:extract(AbsZipped, [{cwd,Dir}]),
-    erldocs_other_utils:rmr_symlinks(Dir),
-    erldocs_other_utils:mv_all(UnZipped, Dir),
+    eo_util:rmr_symlinks(Dir),
+    eo_util:mv_all(UnZipped, Dir),
     file:delete(AbsZipped);
 
-fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{id=Branch}}) ->
+fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{ id = Branch }}) ->
     %% Note: git-archive does not accept SHA1s
     ArchUrl = "git@bitbucket.org:"++ Repo,
     eo_os:chksh('fetch_git-archive', Dir,
@@ -89,36 +100,62 @@ fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{id=Branch}}) ->
                 [ArchUrl,Branch], infinity),
     AbsTarred = filename:join(Dir, "repo.tar"),
     ok = erl_tar:extract(AbsTarred, [{cwd,Dir}]),
-    erldocs_other_utils:rmr_symlinks(Dir),
+    eo_util:rmr_symlinks(Dir),
     file:delete(AbsTarred);
 
-fetch (Dir, {svn, "https://code.google.com/p/"++Name, Rev}) ->
-    case Rev#rev.type of
+fetch (Dir, {git, Url, #rev{ id = Title }}) ->
+    eo_os:chksh('fetch_git-clone', Dir,
+                "git clone --depth 1 '~s' --branch '~s' -- '~s'",
+                [Url,Title,Dir], infinity),
+    eo_util:rmr_symlinks(Dir);
+
+fetch (Dir, {svn, "https://code.google.com/p/"++Name, #rev{ id = Title
+                                                          , type = Type
+                                                          , commit = Commit }}) ->
+    case Type of
         branch -> Kind = "branches";
         tag    -> Kind = "tags"
     end,
-    Title  = Rev#rev.id,
-    Commit = Rev#rev.commit,
     SvnUrl = "http://"++Name++".googlecode.com/svn/"++Kind++"/"++Title,
     eo_os:chksh(fetch_svn, Dir, "svn export -r '~s' '~s'",
                 [Commit,SvnUrl], infinity),
-    erldocs_other_utils:rmr_symlinks(Dir),
-    erldocs_other_utils:mv_all(Title, Dir).
+    eo_util:rmr_symlinks(Dir),
+    eo_util:mv_all(Title, Dir).
 
+
+%% @doc Extract repo's name from repo's URL.
+%%   Eg: "https://github.com/erldocs/erldocs_other"
+%%       -> "erldocs_other"
+-spec repo_name (repo_url()) -> string().
 
 repo_name (Url) ->
     lists:last(string:tokens(Url, "/")).
+
+
+%% @doc Extract what will be a repo's path on the docs website.
+%%   Eg: "https://github.com/erldocs/erldocs_other"
+%%       -> "github.com/erldocs/erldocs_other"
+-spec repo_local_path (repo_url()) -> string().
 
 repo_local_path (Url) ->
     Exploded = string:tokens(Url, "/"),
     filename:join(tl(Exploded)).
 
 
+%% @doc Guess first SCM method to try.
+-spec method (string()) -> method().
+
 method ("https://github.com/"++_) -> git;
 method ("https://bitbucket.org/"++_) -> git;
 method ("https://code.google.com/p/"++_) -> svn.
 
-%% lists:filtermap/2-ready output.
+
+%% @doc Canonize input string into a recognized repo url.
+%%   Eg: "https://github.com/erldocs/erldocs_other.git/…"
+%%       -> {true, "https://github.com/erldocs/erldocs_other"}
+%%   Note: lists:filtermap/2-ready output.
+-spec url (string()) -> {true, repo_url()} | false.
+
 url (URL0) ->
     Url = string:to_lower(URL0),
     case find("(github\\.com|bitbucket\\.org)[:/]([^:/]+)/([^/]+)", Url) of

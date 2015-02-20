@@ -6,7 +6,7 @@
               , eo_os
               , eo_scm
               , erldocs_other
-              , erldocs_other_utils
+              , eo_util
               , iolists
               ]}
   , {registered, []}
