@@ -19,6 +19,7 @@
 %% API
 
 %% @doc On error puts log and meta then throws.
+%%   Topmost function.
 
 gen (Conf) ->
     RANDOM  = kf(Conf, random),
@@ -315,11 +316,11 @@ utc () ->
 
 count (Field, Revs) ->
     FieldCounter =
-        fun (Rev, Acc) ->
-                case Rev#rev.type of
-                    Field -> Acc + 1;
-                    _Else -> Acc
-                end
+        fun (#rev{ type = Type }, Acc)
+              when Type == Field ->
+                Acc + 1;
+            (_Else, Acc) ->
+                Acc
         end,
     lists:foldl(FieldCounter, 0, Revs).
 
@@ -328,7 +329,7 @@ to_file (Path, Data) ->
     to_file (Path, Data, []).
 to_file (Path, Data, Options) ->
     Str = [io_lib:fwrite("~p.\n",[Datum]) || Datum <- Data],
-    file:write_file(Path, Str, Options).
+    ok = file:write_file(Path, Str, Options).
 
 start_output_redirection (standard_io) -> ok;
 start_output_redirection (LogFile) ->

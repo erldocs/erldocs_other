@@ -50,7 +50,8 @@ find_delete (Dir, Names) ->
     Tildes = lists:duplicate(length(Names), "~s"),
     Quoted = string:join(Tildes, "' -or -name '"),
     Cmd = "find . \\( -name '"++ Quoted ++"' \\) -exec rm -r \"{}\" \\;",
-    {_Code,_} = eo_os:sh(Dir, Cmd, Names).
+    {_Code,_} = eo_os:sh(Dir, Cmd, Names),
+    ok.
 
 rmr_symlinks (Dir) ->
     eo_os:chksh(rmr_symlinks, Dir, "find -P . -type l -delete", []).

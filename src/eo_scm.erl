@@ -21,8 +21,8 @@
 -include("erldocs_other.hrl").
 
 -type method() :: git | svn.
--type repo_url() :: string().
--type source() :: {method(), repo_url(), rev()}.
+-type repo_url() :: nonempty_string().
+-type source() :: {method(), repo_url(), '_' | rev()}.
 
 %% API
 
@@ -126,7 +126,7 @@ fetch (Dir, {svn, "https://code.google.com/p/"++Name, #rev{ id = Title
 %% @doc Extract repo's name from repo's URL.
 %%   Eg: "https://github.com/erldocs/erldocs_other"
 %%       -> "erldocs_other"
--spec repo_name (repo_url()) -> string().
+-spec repo_name (repo_url()) -> nonempty_string().
 
 repo_name (Url) ->
     lists:last(string:tokens(Url, "/")).
@@ -135,7 +135,7 @@ repo_name (Url) ->
 %% @doc Extract what will be a repo's path on the docs website.
 %%   Eg: "https://github.com/erldocs/erldocs_other"
 %%       -> "github.com/erldocs/erldocs_other"
--spec repo_local_path (repo_url()) -> string().
+-spec repo_local_path (repo_url()) -> nonempty_string().
 
 repo_local_path (Url) ->
     Exploded = string:tokens(Url, "/"),
