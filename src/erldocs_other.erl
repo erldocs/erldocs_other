@@ -7,11 +7,11 @@
 
 -export([ main/1 ]).
 
--record(conf, { dest = ""
-              , url  = ""
-              , base = "./"
-              , logfile = standard_io
-              , ga = "UA-54292016-1" }).
+-record(conf, { dest :: filelib:dirname()
+              , url  :: string()
+              , base    = eo_default:base()
+              , logfile = eo_default:logfile()
+              , ga      = eo_default:ga() }).
 
 %% API
 

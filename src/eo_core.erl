@@ -42,9 +42,10 @@ gen (Conf) ->
     replace_dir(Dest),
     ?u:mv([Logfile,metafile(Tmp)], Dest),
     DocsRoot = filename:join(Tmp, "repo"),
-    ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
-                             , "jquery.js", "erldocs.js"
-                             , ".xml" ]),
+    kf(Conf,base) =/= eo_default:base() andalso
+        ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
+                                 , "jquery.js", "erldocs.js"
+                                 , ".xml" ]),
     Pattern = filename:join(DocsRoot, "*"),
     ?u:mv(filelib:wildcard(Pattern), Dest),
     rmdir(DocsRoot),
@@ -230,8 +231,17 @@ list_abs (Path, Wildcard) ->
     filelib:wildcard(Pattern).
 
 kf (Conf, Key) ->
-    {Key, Value} = lists:keyfind(Key, 1, Conf),
-    Value.
+    case lists:keyfind(Key, 1, Conf) of
+        {Key, Value} -> Value;
+        false ->
+            %% Fetches latest code version!
+            try eo_default:Key() of
+                Value -> Value
+            catch
+                error:undef ->
+                    {error,no_default_for,Key,absent_from,Conf}
+            end
+    end.
 
 copy_repo (Rev = #rev{id=Branch, type=RevType},
            Method, Url, RepoName, DestDir) ->

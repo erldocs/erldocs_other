@@ -8,6 +8,7 @@
               , erldocs_other
               , eo_util
               , iolists
+              , eo_default
               ]}
   , {registered, []}
   , {applications, [ kernel
