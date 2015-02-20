@@ -10,9 +10,7 @@
         , gen/1 ]).
 
 -include("erldocs_other.hrl").
-
--define(LOG(Str, Args), io:format(" :: "++ Str, Args)).
--define(LOG(Str),       io:format(" :: "++ Str)).
+-include("logging.hrl").
 
 -define(u, eo_util).
 
@@ -57,7 +55,7 @@ main (Conf) ->
         main_(Conf)
     catch Type:Error ->
             E = [?MODULE, erlang:get_stacktrace(), {Type,Error}],
-            ?LOG("Error running ~p:\n\t~p\n~p\n", E),
+            ?MILESTONE("Error running ~p:\n\t~p\n~p", E),
             stop_output_redirection(),
             E
     end.
@@ -78,9 +76,9 @@ main_ (Conf) ->
     mkdir(DocsRoot),
     MetaFile = metafile(Dest),
 
-    ?LOG("Extracting meta information\n"),
+    ?MILESTONE("Extracting meta information"),
     Meta = extract_info(Method, Url, TimeBegin),
-    ?LOG("Writing meta to ~p\n", [MetaFile]),
+    ?MILESTONE("Writing meta to ~p", [MetaFile]),
     to_file(MetaFile, Meta),
 
     TBs = kf(Meta, revisions),
@@ -93,12 +91,12 @@ main_ (Conf) ->
 
 main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
        Conf, Meta, MetaFile, DocsRoot, Dest, Discovered0) ->
-    ?LOG("Processing\trepo:~s\trev:~p\n", [RepoName,TB]),
+    ?MILESTONE("Processing\trepo:~s\trev:~p", [RepoName,TB]),
 
-    ?LOG("Fetching repo code\n"),
+    ?MILESTONE("Fetching repo code"),
     TitledPath = copy_repo(TB, Method, Url, RepoName, Dest),
 
-    ?LOG("Getting dependencies\n"),
+    ?MILESTONE("Getting dependencies"),
     Deps = get_deps(TitledPath), %% FIXME: store deps per TB
 
     %%FIXME `make` cloned repo (using shell's redirection & sandbox)
@@ -106,7 +104,7 @@ main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
     %%FIXME think about rmrf TitlePath/.git/, deps/*/.git/ & submodules'.
     erldocs(Conf, DocsRoot, TB, TitledPath),
 
-    ?LOG("Discovering other repos\n"),
+    ?MILESTONE("Discovering other repos"),
     %%del_deps(TitledPath),
     case repo_discovery(TB, TitledPath) of
         {_, []}  -> Discovered = Discovered0;
@@ -119,7 +117,7 @@ main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
 
 main_ ([], _Method, _Url, _RepoName, TmpDir,
        Conf, Meta, MetaFile, DocsRoot, _Dest, Treasures) ->
-    ?LOG("Erldocs finishing up.\n"),
+    ?MILESTONE("Erldocs finishing up"),
     MetaRest = [ {discovered, Treasures}
                , {time_end, utc()} ],
     to_file(MetaFile, MetaRest, [append]),
@@ -203,7 +201,7 @@ discover_urls (Seps, Mid, Bin) ->
 
 erldocs (Conf, DocsRoot, #rev{id=Branch}, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
-    ?LOG("Generating erldocs into ~s\n", [DocsDest]),
+    ?MILESTONE("Generating erldocs into ~s", [DocsDest]),
     mkdir(DocsDest),
     Args = [ Path
            , "-o",     DocsDest
@@ -308,12 +306,12 @@ extract_info (Method, Url, TimeBegin) ->
         error ->
             %%FIXME try another SCM?
             case ?u:hg_test(Url) of
-                true  -> io:format("SCM is hg: not yet supported.\n");
-                false -> io:format("Repo may as well not exist.\n"), ignore_for_now
+                true  -> ?NOTE("method", "SCM is hg: not yet supported");
+                false -> ?NOTE("method", "Repo may as well not exist"), ignore_for_now
             end,
             TBs = []
     end,
-    io:format("-> ~p branches, ~p tags\n", [count(branch,TBs),count(tag,TBs)]),
+    ?NOTE("repo", "~p branches, ~p tags", [count(branch,TBs),count(tag,TBs)]),
     [ {name, eo_scm:repo_name(Url)}
     , {target_path, eo_scm:repo_local_path(Url)}
     , {url, Url}

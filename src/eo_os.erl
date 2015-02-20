@@ -8,6 +8,8 @@
 -export([ chksh/3, chksh/4, chksh/5
         , sh/2, sh/3, sh/4 ]).
 
+-include("logging.hrl").
+
 -define(ShortCmdTimeout, 5 * 1000).
 
 %% API
@@ -41,7 +43,7 @@ sh (Dir, Fmt, Data, Timeout) ->
 %% Internals
 
 set_cwd (Dir) ->
-    io:format("$ cd ~p\n", [Dir]),
+    ?PWD(Dir),
     ok = file:set_cwd(Dir).
 
 chk (Func, ShCall) ->
@@ -49,12 +51,12 @@ chk (Func, ShCall) ->
         {0, _} -> ok;
         {Code, Stdout0} ->
             Stdout = iolists:filtermap(fun (X) -> X < 127 end, Stdout0),
-            io:format("~p\n", [Stdout]),
+            ?NOTE("stdout", "~p", [Stdout]),
             throw({sh,Func,error,Code,Stdout0})
     end.
 
 run (Cmd, Timeout) ->
-    io:format("$ ~p  `~s`\n", [Timeout,Cmd]),
+    ?RUN(Cmd, Timeout),
     Port = open_port({spawn,Cmd}, [exit_status]),
     loop(Port, [], Timeout).
 

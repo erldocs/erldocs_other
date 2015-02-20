@@ -23,6 +23,8 @@
         , rebar_delete_deps/1
         ]).
 
+-include("logging.hrl").
+
 %% API
 
 rmrf (Dir) ->
@@ -104,7 +106,7 @@ rebar_get_deps (RepoDir) ->
         {_,_} -> Dirs0 = []
     end,
     Dirs = [Dep || {Dep} <- Dirs0],
-    io:format("~p\n", [Dirs]),
+    ?NOTE("rebar", "deps = ~p", [Dirs]),
     Dirs.
 
 rebar_delete_deps (_RepoDir) -> %mind rebar hooks!!
