@@ -20,10 +20,9 @@
 %%   Topmost function.
 
 gen (Conf) ->
-    RANDOM  = kf(Conf, random),
     Odir    = kf(Conf, website_dir),
     mkdir(Odir),
-    Tmp     = mk_name_tmp(kf(Conf,dest), RANDOM),
+    Tmp     = kf(Conf, dest),
     mkdir(Tmp),
     Logfile = filename:join(Tmp, "_.txt"),
     case main([ {dest, Tmp}
@@ -47,7 +46,10 @@ gen (Conf) ->
     Pattern = filename:join(DocsRoot, "*"),
     ?u:mv(filelib:wildcard(Pattern), Dest),
     rmdir(DocsRoot),
-    rmdir(Tmp),
+    case file:del_dir(Tmp) of
+        ok -> ok;
+        {error, eexist} -> ok
+    end,
     {ok, Url, Dest, "http://other.erldocs.com/"++TargetPath}.
 
 main (Conf) ->
@@ -283,12 +285,6 @@ mkdir (Dir) ->
 replace_dir (Dir) ->
     ?u:rmrf(Dir),
     mkdir(Dir).
-
-mk_name_tmp (Dest, Random)
-  when is_number(Random) ->
-    mk_name_tmp(Dest, integer_to_list(Random));
-mk_name_tmp (Dest, Random) ->
-    filename:join(Dest, Random).
 
 make_name (RepoName, Branch, RevType) ->
     case RevType of
