@@ -20,3 +20,5 @@ debug: debug-app
 
 dialyze: app
 	dialyzer --src src/ --plt ~/.dialyzer_plt --no_native  -Werror_handling -Wrace_conditions -Wunmatched_returns -Wunderspecs
+
+test: eunit
