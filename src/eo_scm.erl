@@ -112,6 +112,7 @@ fetch (Dir, {git, Url, #rev{ id = Title }}) ->
 fetch (Dir, {svn, "https://code.google.com/p/"++Name, #rev{ id = Title
                                                           , type = Type
                                                           , commit = Commit }}) ->
+    %%svn checkout http://plists.googlecode.com/svn/trunk/ plists-read-only
     case Type of
         branch -> Kind = "branches";
         tag    -> Kind = "tags"

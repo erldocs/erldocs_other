@@ -29,13 +29,26 @@ new_test_tar (Url) ->
 %% API tests.
 
 gen_test_ () ->
-    [ do("https://bitbucket.org/fenollp/ring")
-    , do("https://bitbucket.org/fenollp/tmln-google")
-    , do("https://bitbucket.org/fenollp/asql")
-    , do("https://github.com/fenollp/erlang-dot")
-    , do("https://github.com/fenollp/patmat") ].
+    [] ++
+        bitbucket() ++
+        github() ++
+        googlecode() ++
+        [].
 
 %% Internals
+
+bitbucket () ->
+    [ do("https://bitbucket.org/fenollp/ring")
+    , do("https://bitbucket.org/fenollp/tmln-google")
+    , do("https://bitbucket.org/fenollp/asql") ].
+
+github () ->
+    [ do("https://github.com/fenollp/erlang-dot")
+    , do("https://github.com/fenollp/patmat") ].
+
+googlecode () ->
+    [ do("https://code.google.com/p/plists") ].
+
 
 rmr (Dir) ->
     os:cmd("rm -r '" ++ Dir ++ "'").
