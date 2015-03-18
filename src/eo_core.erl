@@ -151,7 +151,7 @@ list_titles (DocsRoot, Revs) ->
     case Items of
         [] -> "(none)";
         _  ->
-            Spaces = lists:duplicate(3, "&nbsp;"),
+            Spaces = " &nbsp; ",
             string:join(Items, Spaces)
     end.
 
