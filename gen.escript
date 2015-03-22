@@ -1,4 +1,5 @@
 #!/usr/bin/env escript
+%%! -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/
 %% Copyright © 2015 Pierre Fenoll ‹pierrefenoll@gmail.com›
 %% -*- coding: utf-8 -*-
 
@@ -24,7 +25,7 @@ main (_) ->
 usage () ->
     ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
-    io:format("Usage: ~s  ‹file with one URL per line›\n",
+    io:format("Usage: ~s  ‹site dir› ‹tmp dir› ‹file with one URL per line›\n",
               [filename:basename(Arg0)]),
     halt(1).
 
@@ -35,18 +36,23 @@ fabs (Fn) ->
 read_URLs (File) ->
     {ok, Raw} = file:read_file(File),
     Bins = binary:split(Raw, <<"\n">>, [global]),
-    lists:map(fun erlang:binary_to_list/1, Bins).
+    [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>].
 
 par_gen (SiteDir, TmpDir, URLs) ->
-    {SomeURLs, Rest} = take_some(URLs),
-    Args = prep_args(SiteDir, TmpDir, SomeURLs),
-    Res = rpc:pmap({eo_core,gen}, [], Args),
-    io:format("~p\n", [lists:zip(SomeURLs,Res)]),
-    par_gen(SiteDir, TmpDir, Rest).
+    case take_some(URLs) of
+        {[], _} -> ok;
+        {SomeURLs, Rest} ->
+            Args = prep_args(SiteDir, TmpDir, SomeURLs),
+            io:format("Args ~p\nm:~p\n", [Args,html_dtl:module_info()]),
+            Res = rpc:pmap({eo_core,gen}, [], Args),
+            io:format("~p\n", [lists:zip(SomeURLs,Res)]),
+            par_gen(SiteDir, TmpDir, Rest)
+    end.
 
+prep_args (_SiteDir, _TmpDir, []) -> [];
 prep_args (SiteDir, TmpDir, [URL|URLs]) ->
     Arg = [ {website_dir, SiteDir}
-          , {dest, TmpDir++random_str()}
+          , {dest, filename:join(TmpDir,random_str())}
           , {url, URL} ],
     [Arg | prep_args(SiteDir, TmpDir, URLs)].
 
