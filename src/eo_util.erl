@@ -63,6 +63,7 @@ du (Dir) ->
     [{Size,_}] = R,
     list_to_integer(Size).
 
+mv ([], _Dir) -> ok;
 mv (Paths, Dir) ->
     Tildes = lists:duplicate(length(Paths), "~s"),
     Quoted = string:join(Tildes, "' '"),
@@ -76,8 +77,7 @@ mv_all (Src, Dst) ->
 
 
 git_get_submodules (RepoDir) ->
-    eo_os:chksh(git_get_submodules, RepoDir,
-                "git submodule update --init --recursive", [], infinity).
+    eo_os:sh(RepoDir, "git submodule update --init --recursive", [], infinity).
 
 delete_submodules (_RepoDir) -> %No git command as of yet!
     %%cat gitmodules.txt | `which grep` -P '^\s*path\s+=' | sed 's/\s\*//' | cut -d ' ' -f 3
