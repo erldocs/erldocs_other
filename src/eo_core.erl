@@ -241,10 +241,10 @@ copy_repo (Rev = #rev{id=Branch, type=RevType},
     TitledPath.
 
 get_deps (Path) ->
-    case path_exists([Path, "rebar.config"]) of
-        true  -> ?u:rebar_get_deps(Path);
-        false -> ok
-    end,
+    _ = case path_exists([Path, "rebar.config"]) of
+            true  -> ?u:rebar_get_deps(Path);
+            false -> ok
+        end,
     case path_exists([Path, ".gitmodules"]) of
         true  -> ?u:git_get_submodules(Path);
         false -> ok
