@@ -15,7 +15,7 @@
 main ([SiteDir, TmpDir, ListFile]) ->
     List = read_URLs(ListFile),
     random:seed(now()),
-    par_gen(fabs(SiteDir), fabs(TmpDir), List);
+    seq_gen(fabs(SiteDir), fabs(TmpDir), List);
 
 main (_) ->
     usage().
@@ -38,33 +38,18 @@ read_URLs (File) ->
     Bins = binary:split(Raw, <<"\n">>, [global]),
     [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>].
 
-par_gen (SiteDir, TmpDir, URLs) ->
-    case take_some(URLs) of
-        {[], _} -> ok;
-        {SomeURLs, Rest} ->
-            Args = prep_args(SiteDir, TmpDir, SomeURLs),
-            io:format("Args ~p\nm:~p\n", [Args,html_dtl:module_info()]),
-            Res = rpc:pmap({eo_core,gen}, [], Args),
-            io:format("~p\n", [lists:zip(SomeURLs,Res)]),
-            par_gen(SiteDir, TmpDir, Rest)
-    end.
-
-prep_args (_SiteDir, _TmpDir, []) -> [];
-prep_args (SiteDir, TmpDir, [URL|URLs]) ->
+seq_gen (_SiteDir, _TmpDir, []) -> ok;
+seq_gen (SiteDir, TmpDir, [URL|Rest]) ->
     Arg = [ {website_dir, SiteDir}
           , {dest, filename:join(TmpDir,random_str())}
           , {url, URL} ],
-    [Arg | prep_args(SiteDir, TmpDir, URLs)].
+    io:format("Arg ~10000p\n", [Arg]),
+    Res = eo_core:gen(Arg),
+    io:format("Res ~10000p\n", [Res]),
+    seq_gen(SiteDir, TmpDir, Rest).
 
 random_str () ->
     integer_to_list(
       random:uniform(9999999999)).
-
-take_some (List) ->
-    Some = lists:sublist(List, ?PAR_MAX),
-    {Some, dropN(length(Some), List)}.
-
-dropN (0, List) -> List;
-dropN (N, List) -> dropN(N-1, tl(List)).
 
 %% End of Module.
