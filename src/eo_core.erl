@@ -36,20 +36,9 @@ gen (Conf) ->
             TargetPath = eo_scm:repo_local_path(Url)
     end,
     Dest = filename:join(Odir, TargetPath),
-    replace_dir(Dest),
+    mkdir(Dest),
     ?u:mv([Logfile,metafile(Tmp)], Dest),
-    DocsRoot = filename:join(Tmp, "repo"),
-    kf(Conf,base) =/= eo_default:base() andalso
-        ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
-                                 , "jquery.js", "erldocs.js"
-                                 , ".xml" ]),
-    Pattern = filename:join(DocsRoot, "*"),
-    ?u:mv(filelib:wildcard(Pattern), Dest),
-    rmdir(DocsRoot),
-    case file:del_dir(Tmp) of
-        ok -> ok;
-        {error, eexist} -> ok
-    end,
+    replace_dir(Dest, Tmp, Conf),
     {ok, Url, Dest, "http://other.erldocs.com/"++TargetPath}.
 
 main (Conf) ->
@@ -282,9 +271,32 @@ rmdir (Dir) ->
 mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
 
-replace_dir (Dir) ->
-    ?u:rmrf(Dir),
-    mkdir(Dir).
+
+replace_dir (Dest, Tmp, Conf) ->
+    DocsRoot = filename:join(Tmp, "repo"),
+    kf(Conf,base) =/= eo_default:base() andalso
+        ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
+                                 , "jquery.js", "erldocs.js"
+                                 , ".xml" ]),
+    ToMove = filelib:wildcard(filename:join(DocsRoot, "*")),
+    rm_dest_docs(Dest, ToMove),
+    ?u:mv(ToMove, Dest),
+    rmdir(DocsRoot),
+    case file:del_dir(Tmp) of
+        ok -> ok;
+        {error, eexist} -> ok
+    end.
+
+rm_dest_docs (Dest, Docs) ->
+    ToRm = [DestDoc || Doc <- Docs
+                           , filelib:is_dir(Doc)
+                           , begin
+                                 DestDoc = filename:join(Dest, filename:basename(Doc)),
+                                 filelib:is_dir(DestDoc)
+                             end],
+    %% Paths are absolute: no real need to tmp_cd(Dest).
+    ?u:rm_r(ToRm, Dest).
+
 
 make_name (RepoName, Branch, RevType) ->
     case RevType of

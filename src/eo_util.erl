@@ -33,6 +33,7 @@ rmrf (Dir) ->
 rm_r (Dir) ->
     eo_os:chksh(rm_r, "rm -r '~s'", [Dir]).
 
+rm_r ([], _ChDir) -> ok;
 rm_r (Paths, ChDir) ->
     Tildes = lists:duplicate(length(Paths), "~s"),
     Quoted = string:join(Tildes, "' '"),
