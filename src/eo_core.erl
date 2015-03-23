@@ -79,7 +79,7 @@ main_ (Conf) ->
 
 main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
        Conf, Meta, MetaFile, DocsRoot, Dest, Discovered0) ->
-    ?MILESTONE("Processing\trepo:~s\trev:~p", [RepoName,TB]),
+    ?MILESTONE("Processing ~s\t~1000p", [Url,TB]),
 
     ?MILESTONE("Fetching repo code"),
     TitledPath = copy_repo(TB, Method, Url, RepoName, Dest),
