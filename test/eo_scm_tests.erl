@@ -35,8 +35,10 @@ github_test_ () ->
 
 googlecode_test_ () ->
     [ do(svn, "https://code.google.com/p/plists"
-        , {ok,[
-              ]})
+        , {ok, [ #rev{ type = branch
+                     , id = "trunk"
+                     , commit = "11" }
+               ]})
     ].
 
 %% Internals

@@ -48,7 +48,7 @@ refs ({git, Url, _Rev}) ->
 
 refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
     Url = "http://"++Name++".googlecode.com/svn",
-    case eo_os:sh("svn ls --verbose '~s/branches' '~s/tags'", [Url,Url]) of
+    case eo_os:sh("svn ls --verbose '~s/branches' '~s/tags' '~s/trunk'", [Url,Url,Url]) of
         {0,R} ->
             Dirs = [ begin
                          Row = string:tokens(X, " "),
@@ -56,12 +56,7 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
                          Dir = lists:last(Rest),
                          {Revision, string:substr(Dir, 1, length(Dir)-1)}
                      end || {X} <- R],
-            NotDot = fun ({_,X}) -> X /= "." end,
-            {Bs0,Ts0} = lists:splitwith(NotDot, tl(Dirs)),
-            Bs = [#rev{id=B, commit=Co, type=branch} || {Co,B} <- Bs0],
-            Ts = [#rev{id=T, commit=Co, type=tag}    || {Co,T} <- tl(Ts0)],
-            %% FIXME: What about trunk? (eg. https://code.google.com/p/plists/)
-            {ok, Ts++Bs};
+            {ok, parse_svn_ls(Dirs)};
         {1,_} ->
             error  %% Not this kind of repo or does not exist.
     end.
@@ -112,12 +107,14 @@ fetch (Dir, {git, Url, #rev{ id = Title }}) ->
 fetch (Dir, {svn, "https://code.google.com/p/"++Name, #rev{ id = Title
                                                           , type = Type
                                                           , commit = Commit }}) ->
-    %%svn checkout http://plists.googlecode.com/svn/trunk/ plists-read-only
-    case Type of
-        branch -> Kind = "branches";
-        tag    -> Kind = "tags"
+    case {Title,Type} of
+        {"trunk",branch} ->
+            SvnUrl = "http://"++Name++".googlecode.com/svn/trunk";
+        {_,branch} ->
+            SvnUrl = "http://"++Name++".googlecode.com/svn/branches/"++Title;
+        {_,tag} ->
+            SvnUrl = "http://"++Name++".googlecode.com/svn/tags/"++Title
     end,
-    SvnUrl = "http://"++Name++".googlecode.com/svn/"++Kind++"/"++Title,
     eo_os:chksh(fetch_svn, Dir, "svn export -r '~s' '~s'",
                 [Commit,SvnUrl], infinity),
     eo_util:rmr_symlinks(Dir),
@@ -185,5 +182,17 @@ dereference (Tag0) ->
         false -> Tag;
         true  -> dereference(Tag)
     end.
+
+parse_svn_ls ([{_,"."}|Rest]) ->
+    split_svn_ls(Rest, branch, []).
+
+split_svn_ls ([{_,"."}|Rest], branch, Acc) ->
+    split_svn_ls(Rest, tag, Acc);
+split_svn_ls ([{Co,"."}|_], tag, Acc) ->
+    Rev = #rev{id="trunk", commit=Co, type=branch},
+    [Rev|Acc];
+split_svn_ls ([{Co,Id}|Rest], Type, Acc) ->
+    Rev = #rev{id=Id, commit=Co, type=Type},
+    split_svn_ls(Rest, Type, [Rev|Acc]).
 
 %% End of Module.
