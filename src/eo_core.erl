@@ -42,6 +42,7 @@ gen (Conf) ->
     {ok, Url, Dest, "http://other.erldocs.com/"++TargetPath}.
 
 main (Conf) ->
+    inets:start(),
     try
         main_(Conf)
     catch Type:Error ->
@@ -72,13 +73,9 @@ main_ (Conf) ->
     ?MILESTONE("Writing meta to ~p", [MetaFile]),
     to_file(MetaFile, Meta),
 
-    TBs = kf(Meta, revisions),
-    %% case TBs of
-    %%     [] -> throw({?MODULE, repo_down_or_empty});
-    %%     _ ->
-            main_(TBs, Method, Url, RepoName, TmpDir,
-                  Conf, Meta, MetaFile, DocsRoot, Dest, [])
-    .%% end.
+    TBs = select_titles(kf(Conf,update_only), kf(Meta,revisions), kf(Meta,url)),
+    main_(TBs, Method, Url, RepoName, TmpDir,
+          Conf, Meta, MetaFile, DocsRoot, Dest, []).
 
 main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
        Conf, Meta, MetaFile, DocsRoot, Dest, Discovered0) ->
@@ -134,7 +131,8 @@ list_titles (DocsRoot, Revs) ->
                   true  ->
                       "<a href=\""++Title++"\">"++Title++"</a>";
                   false ->
-                      ?u:rm_r(filename:join(DocsRoot, Title)),
+                      Doc = filename:join(DocsRoot, Title),
+                      filelib:is_dir(Doc) andalso ?u:rm_r(Doc),
                       Title
               end || #rev{id=Title} <- Revs ],
     case Items of
@@ -339,6 +337,37 @@ count (Field, Revs) ->
                 Acc
         end,
     lists:foldl(FieldCounter, 0, Revs).
+
+
+select_titles (false, Revs, _Url) -> Revs;
+select_titles (true, NewRevs, Url) ->
+    case lists:keyfind(revisions, 1, web_consult(Url++"/meta.txt")) of
+        false ->            OldRevs = [];
+        {revisions,Revs} -> OldRevs = Revs
+    end,
+    lists:filter(
+      fun (NRev) ->
+              IsMember = lists:member(NRev, OldRevs),
+              IsMember andalso ?MILESTONE("Skipping ~s ~p",
+                                          [NRev#rev.type, NRev#rev.id]),
+              not IsMember
+      end, NewRevs).
+
+web_consult (Url) ->
+    case httpc:request(Url) of
+        {ok, {_,_,Body}} ->
+            {ok, Tokens, _} = erl_scan:string(Body),
+            Forms = split_after_dot(Tokens, [], []),
+            [element(2,erl_parse:parse_term(Form)) || Form <- Forms];
+        _ -> []
+    end.
+
+split_after_dot ([], _Acc, Forms) -> Forms;
+split_after_dot ([Token={dot,_}|Rest], Acc, Forms) ->
+    Form = lists:reverse([Token|Acc]),
+    split_after_dot(Rest, [], [Form|Forms]);
+split_after_dot ([Token|Rest], Acc, Forms) ->
+    split_after_dot(Rest, [Token|Acc], Forms).
 
 
 to_file (Path, Data) ->

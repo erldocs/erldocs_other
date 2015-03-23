@@ -8,6 +8,7 @@
 -export([ base/0
         , logfile/0
         , ga/0
+        , update_only/0
         ]).
 
 
@@ -21,6 +22,9 @@ logfile () ->
 
 ga () ->
     "UA-54292016-1".
+
+update_only () ->
+    true.
 
 %% Internals
 
