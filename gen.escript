@@ -42,6 +42,7 @@ seq_gen (_SiteDir, _TmpDir, []) -> ok;
 seq_gen (SiteDir, TmpDir, [URL|Rest]) ->
     Arg = [ {website_dir, SiteDir}
           , {dest, filename:join(TmpDir,random_str())}
+          , {base, "/"}
           , {url, URL} ],
     io:format("~p Arg ~10000p\n", [now(),Arg]),
     Res = (catch (eo_core:gen(Arg))),
