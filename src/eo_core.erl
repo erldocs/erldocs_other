@@ -73,7 +73,7 @@ main_ (Conf) ->
     ?MILESTONE("Writing meta to ~p", [MetaFile]),
     to_file(MetaFile, Meta),
 
-    TBs = select_titles(kf(Conf,update_only), kf(Meta,revisions), kf(Meta,url)),
+    TBs = select_titles(kf(Conf,update_only), kf(Meta,revisions), kf(Meta,target_path)),
     main_(TBs, Method, Url, RepoName, TmpDir,
           Conf, Meta, MetaFile, DocsRoot, Dest, []).
 
@@ -106,9 +106,7 @@ main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
 main_ ([], _Method, _Url, _RepoName, TmpDir,
        Conf, Meta, MetaFile, DocsRoot, _Dest, Treasures) ->
     ?MILESTONE("Erldocs finishing up"),
-    MetaRest = [ {discovered, Treasures}
-               , {time_end, utc()} ],
-    to_file(MetaFile, MetaRest, [append]),
+    complete_metafile(kf(Conf,update_only), kf(Meta,target_path), MetaFile, Treasures),
     ?u:rm_r(TmpDir),
     put_repo_index(Conf, DocsRoot, Meta),
     stop_output_redirection(),
@@ -339,9 +337,22 @@ count (Field, Revs) ->
     lists:foldl(FieldCounter, 0, Revs).
 
 
+complete_metafile(UpdateOnly, TargetPath, MetaFile, Treasures) ->
+    MetaRest = [ {discovered, merge_treasures(UpdateOnly, TargetPath, Treasures)}
+               , {time_end, utc()} ],
+    to_file(MetaFile, MetaRest, [append]).
+
+merge_treasures(false, _Url, Treasures) -> Treasures;
+merge_treasures(true, Url, Treasures) ->
+    case lists:keyfind(discovered, 1, consult_meta(Url)) of
+        false ->           OldTreasures = [];
+        {discovered,Ts} -> OldTreasures = Ts
+    end,
+    lists:keymerge(1, Treasures, OldTreasures).
+
 select_titles (false, Revs, _Url) -> Revs;
 select_titles (true, NewRevs, Url) ->
-    case lists:keyfind(revisions, 1, web_consult(Url++"/meta.txt")) of
+    case lists:keyfind(revisions, 1, consult_meta(Url)) of
         false ->            OldRevs = [];
         {revisions,Revs} -> OldRevs = Revs
     end,
@@ -353,7 +364,8 @@ select_titles (true, NewRevs, Url) ->
               not IsMember
       end, NewRevs).
 
-web_consult (Url) ->
+consult_meta (TargetPath) ->
+    Url = "http://other.erldocs.com/"++ TargetPath ++"/meta.txt",
     case httpc:request(Url) of
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
