@@ -8,7 +8,7 @@ apps=apps.js
 
 cd "$dir" \
     && echo 'apps = [' >$apps \
-    && find . -name meta.txt | cut -c3- | sed 's/.........$/",/' | sed 's/^/"/' | tr -d '\n' >>$apps \
+    && find . -name index.html | cut -c3- | sed 's/...........$/",/' | sed 's/^/"/' | tr -d '\n' >>$apps \
     && echo '];' >>$apps \
     && git pull origin gh-pages \
     && git add -A . \
