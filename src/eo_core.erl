@@ -55,8 +55,7 @@ main (Conf) ->
 main_ (Conf) ->
     start_output_redirection(kf(Conf, logfile)),
     TimeBegin = utc(),
-    URL0 = kf(Conf, url),
-    {true,Url} = eo_scm:url(URL0),
+    {true,Url} = eo_scm:url(kf(Conf, url)),
     Method     = eo_scm:method(Url),
     RepoName   = eo_scm:repo_name(Url),
 
@@ -69,55 +68,55 @@ main_ (Conf) ->
     MetaFile = metafile(Dest),
 
     ?MILESTONE("Extracting meta information"),
-    Meta = extract_info(Method, Url, TimeBegin),
+    {ok, OldMeta, Revs, Meta} =
+        extract_info(kf(Conf,update_only), Method, Url, TimeBegin),
     ?MILESTONE("Writing meta to ~p", [MetaFile]),
     to_file(MetaFile, Meta),
 
-    TBs = select_titles(kf(Conf,update_only), kf(Meta,revisions), kf(Meta,target_path)),
-    main_(TBs, Method, Url, RepoName, TmpDir,
-          Conf, Meta, MetaFile, DocsRoot, Dest, []).
+    {ok, ToDo, Skippable} = select_titles(OldMeta, Revs),
+    TBs = [do(TB, Method, Url, RepoName, Conf, DocsRoot, Dest)
+           || TB <- ToDo] ++ Skippable,
+    ?MILESTONE("Finishing up"),
+    MetaRest = [ {revisions, TBs}
+               , {time_end, utc()}
+               ],
+    to_file(MetaFile, MetaRest, [append]),
+    NewMeta = Meta ++ MetaRest,
+    ?u:rm_r(TmpDir),
+    put_repo_index(Conf, DocsRoot, NewMeta),
+    stop_output_redirection(),
+    {ok, NewMeta, MetaFile}.
 
-main_ ([TB|TBs], Method, Url, RepoName, TmpDir,
-       Conf, Meta, MetaFile, DocsRoot, Dest, Discovered0) ->
-    ?MILESTONE("Processing ~s\t~1000p", [Url,TB]),
+do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
+    ?MILESTONE("Processing ~s\t~1000p", [Url,Rev]),
 
     ?MILESTONE("Fetching repo code"),
-    TitledPath = copy_repo(TB, Method, Url, RepoName, Dest),
+    TitledPath = copy_repo(Rev, Method, Url, RepoName, Dest),
 
     ?MILESTONE("Getting dependencies"),
-    Deps = get_deps(TitledPath), %% FIXME: store deps per TB
+    Deps = get_deps(TitledPath),
 
     %%FIXME `make` cloned repo (using shell's redirection & sandbox)
 
     %%FIXME think about rmrf TitlePath/.git/, deps/*/.git/ & submodules'.
-    erldocs(Conf, DocsRoot, TB, TitledPath),
+    Builds = erldocs(Conf, DocsRoot, Rev, TitledPath),
+    %%del_deps(TitledPath),
 
     ?MILESTONE("Discovering other repos"),
-    %%del_deps(TitledPath),
-    case repo_discovery(TB, TitledPath) of
-        {_, []}  -> Discovered = Discovered0;
-        Treasure -> Discovered = [Treasure|Discovered0]
-    end,
+    Discovered = repo_discovery(TitledPath),
 
     ?u:rm_r(filename:dirname(TitledPath)),  %% rm titled repo
-    main_(TBs, Method, Url, RepoName, TmpDir,
-          Conf, Meta, MetaFile, DocsRoot, Dest, Discovered);
-
-main_ ([], _Method, _Url, _RepoName, TmpDir,
-       Conf, Meta, MetaFile, DocsRoot, _Dest, Treasures) ->
-    ?MILESTONE("Erldocs finishing up"),
-    complete_metafile(kf(Conf,update_only), kf(Meta,target_path), MetaFile, Treasures),
-    ?u:rm_r(TmpDir),
-    put_repo_index(Conf, DocsRoot, Meta),
-    stop_output_redirection(),
-    {ok, Meta, MetaFile}.
+    Rev#rev{ discovered = Discovered
+           , deps = Deps
+           , builds = Builds
+           }.
 
 %% Internals
 
 html_index (DocsRoot, Meta) ->
     Revs = kf(Meta, revisions),
-    Tags     = [Rev || Rev <- Revs, Rev#rev.type == tag   ],
-    Branches = [Rev || Rev <- Revs, Rev#rev.type == branch],
+    IsTag = fun (#rev{type = tag}) -> true; (_branch) -> false end,
+    {Tags, Branches} = lists:partition(IsTag, Revs),
     "<h3 id=\"tags\">Tags</h3>"
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>"
         ++ "<br/>"
@@ -125,19 +124,19 @@ html_index (DocsRoot, Meta) ->
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>".
 
 list_titles (DocsRoot, Revs) ->
-    Items = [ case path_exists([DocsRoot, Title, "index.html"]) of
-                  true  ->
+    Items = [ case Builds of
+                  true ->
                       "<a href=\""++Title++"\">"++Title++"</a>";
                   false ->
                       Doc = filename:join(DocsRoot, Title),
                       filelib:is_dir(Doc) andalso ?u:rm_r(Doc),
                       Title
-              end || #rev{id=Title} <- Revs ],
+              end || #rev{ id = Title
+                         , builds = Builds
+                         } <- Revs ],
     case Items of
         [] -> "(none)";
-        _  ->
-            Spaces = " &nbsp; ",
-            string:join(Items, Spaces)
+        _  -> string:join(Items, " &nbsp; ")
     end.
 
 put_repo_index (Conf, DocsRoot, Meta) ->
@@ -151,13 +150,13 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     {ok, CSS}  = css_dtl:render([]),
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
-repo_discovery (Rev, RepoPath) ->
+repo_discovery (RepoPath) ->
     FilesFound = filelib:wildcard("rebar.config*", RepoPath)
         ++ [ File || File <- [ "Makefile"
                              , ".gitmodules" ],
                      path_exists([RepoPath,File]) ],
     UrlsFound = search_files(RepoPath, FilesFound),
-    {Rev, lists:usort(lists:filtermap(fun eo_scm:url/1, UrlsFound))}.
+    lists:usort(lists:filtermap(fun eo_scm:url/1, UrlsFound)).
 
 search_files (RepoPath, Files) ->
     lists:flatmap(
@@ -237,14 +236,15 @@ copy_repo (Rev = #rev{id=Branch, type=RevType},
     TitledPath.
 
 get_deps (Path) ->
-    _ = case path_exists([Path, "rebar.config"]) of
-            true  -> ?u:rebar_get_deps(Path);
-            false -> ok
-        end,
+    case path_exists([Path, "rebar.config"]) of
+        true  -> RebarDeps = ?u:rebar_get_deps(Path);
+        false -> RebarDeps = []
+    end,
     case path_exists([Path, ".gitmodules"]) of
-        true  -> ?u:git_get_submodules(Path);
-        false -> ok
-    end.
+        true  -> SubModDeps = ?u:git_get_submodules(Path);
+        false -> SubModDeps = []
+    end,
+    RebarDeps ++ SubModDeps.
 
 del_deps (Path) ->
     case path_exists([Path, "rebar.config"]) of
@@ -274,7 +274,7 @@ replace_dir (Dest, Tmp, Conf) ->
         ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
                                  , "jquery.js", "erldocs.js"
                                  , ".xml" ]),
-    ToMove = filelib:wildcard(filename:join(DocsRoot, "*")),
+    ToMove = list_abs(DocsRoot, "*"),
     rm_dest_docs(Dest, ToMove),
     ?u:mv(ToMove, Dest),
     rmdir(DocsRoot),
@@ -304,7 +304,7 @@ make_name (RepoName, Branch, RevType) ->
 metafile (Dest) ->
     filename:join(Dest, "meta.txt").
 
-extract_info (Method, Url, TimeBegin) ->
+extract_info (UpdateOnly, Method, Url, TimeBegin) ->
     case eo_scm:refs({Method, Url, '_'}) of
         {ok, TBs} -> TBs;
         error ->
@@ -315,13 +315,21 @@ extract_info (Method, Url, TimeBegin) ->
             end,
             TBs = []
     end,
-    ?NOTE("repo", "~p branches, ~p tags", [count(branch,TBs),count(tag,TBs)]),
-    [ {name, eo_scm:repo_name(Url)}
-    , {target_path, eo_scm:repo_local_path(Url)}
-    , {url, Url}
-    , {time_begin, TimeBegin}
-    , {method, Method}
-    , {revisions, TBs} ].
+    TagsCount = count(tag, TBs),
+    BranchesCount = count(branch, TBs),
+    ?NOTE("repo", "~p branches, ~p tags", [BranchesCount, TagsCount]),
+    TargetPath = eo_scm:repo_local_path(Url),
+    OldMeta = consult_meta(UpdateOnly, TargetPath),
+    {ok, OldMeta, TBs, [ {name, eo_scm:repo_name(Url)}
+                       , {target_path, TargetPath}
+                       , {url, Url}
+                       , {vsn_format, 2}
+                       , {vsn_pass, bump_pass(OldMeta)}
+                       , {time_begin, TimeBegin}
+                       , {method, Method}
+                       , {count_tags, TagsCount}
+                       , {count_branches, BranchesCount}
+                       ]}.
 
 utc () ->
     calendar:universal_time().
@@ -336,41 +344,49 @@ count (Field, Revs) ->
         end,
     lists:foldl(FieldCounter, 0, Revs).
 
+bump_pass (OldMeta) ->
+    case lists:keyfind(vsn_pass, 1, OldMeta) of
+        false -> 1;
+        {vsn_pass,N} -> N + 1
+    end.
 
-complete_metafile(UpdateOnly, TargetPath, MetaFile, Treasures) ->
-    MetaRest = [ {discovered, merge_treasures(UpdateOnly, TargetPath, Treasures)}
-               , {time_end, utc()} ],
-    to_file(MetaFile, MetaRest, [append]).
 
-merge_treasures(false, _Url, Treasures) -> Treasures;
-merge_treasures(true, Url, Treasures) ->
-    case lists:keyfind(discovered, 1, consult_meta(Url)) of
-        false ->           OldTreasures = [];
-        {discovered,Ts} -> OldTreasures = Ts
-    end,
-    lists:keymerge(1, Treasures, OldTreasures).
-
-select_titles (false, Revs, _Url) -> Revs;
-select_titles (true, NewRevs, Url) ->
-    case lists:keyfind(revisions, 1, consult_meta(Url)) of
+select_titles (OldMeta, NewRevs) ->
+    case lists:keyfind(revisions, 1, OldMeta) of
         false ->            OldRevs = [];
         {revisions,Revs} -> OldRevs = Revs
     end,
-    lists:filter(
-      fun (NRev) ->
-              IsMember = lists:member(NRev, OldRevs),
-              IsMember andalso ?MILESTONE("Skipping ~s ~p",
-                                          [NRev#rev.type, NRev#rev.id]),
-              not IsMember
-      end, NewRevs).
+    F = fun (NewRev) -> is_skippable(OldRevs, NewRev) end,
+    {Skippable, Todo} = lists:partition(F, NewRevs),
+    {ok, Todo, Skippable}.
 
-consult_meta (TargetPath) ->
+is_skippable ([], _NewRev) -> false;
+is_skippable ([Rev|Rest], #rev{ type = Type
+                              , id = Id
+                              , commit = Commit
+                              } = NewRev) ->
+    case (Rev#rev.type == Type andalso
+          Rev#rev.id == Id andalso
+          Rev#rev.commit == Commit)
+        orelse Rev#rev.builds == undefined
+    of
+        true ->
+            ?MILESTONE("Skipping ~s ~p", [NewRev#rev.type, NewRev#rev.id]),
+            true;
+        false -> is_skippable(Rest, NewRev)
+    end.
+
+consult_meta (false, _TargetPath) -> [];
+consult_meta (true, TargetPath) ->
     Url = "http://other.erldocs.com/"++ TargetPath ++"/meta.txt",
     case httpc:request(Url) of
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
             Forms = split_after_dot(Tokens, [], []),
-            [element(2,erl_parse:parse_term(Form)) || Form <- Forms];
+            [ begin
+                  {ok, Term} = erl_parse:parse_term(Form),
+                  Term
+              end || Form <- Forms ];
         _ -> []
     end.
 

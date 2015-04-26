@@ -8,6 +8,9 @@
 -record(rev, { type        :: branch | tag  %% Distinguish tag from branch
              , id          :: title()
              , commit = "" :: string()
+             , builds      :: boolean()
+             , deps = []   :: [title()]
+             , discovered = [] :: [rev()]
              }).
 
 -type rev() :: #rev{}.
