@@ -299,7 +299,9 @@ make_name (RepoName, Branch, RevType) ->
         tag    -> RevKind = "tag";
         branch -> RevKind = "branch"
     end,
-    string:join([RepoName,RevKind,Branch], "-").
+    lists:map( fun ($/) -> $_;
+                   (C) -> C end
+             , string:join([RepoName,RevKind,Branch], "-") ).
 
 metafile (Dest) ->
     filename:join(Dest, "meta.txt").
