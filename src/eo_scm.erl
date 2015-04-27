@@ -54,7 +54,7 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
                          Row = string:tokens(X, " "),
                          [Revision | Rest] = Row,
                          Dir = lists:last(Rest),
-                         {Revision, string:substr(Dir, 1, length(Dir)-1)}
+                         {Revision, trim_dangling_slash(Dir)}
                      end || {X} <- R],
             {ok, parse_svn_ls(Dirs)};
         {1,_} ->
@@ -188,5 +188,11 @@ split_svn_ls ([{Co,"."}|_], tag, Acc) ->
 split_svn_ls ([{Co,Id}|Rest], Type, Acc) ->
     Rev = #rev{id=Id, commit=Co, type=Type},
     split_svn_ls(Rest, Type, [Rev|Acc]).
+
+trim_dangling_slash (Str) ->
+    case lists:suffix("/", Str) of
+        true  -> lists:droplast(Str);
+        false -> Str
+    end.
 
 %% End of Module.
