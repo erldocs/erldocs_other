@@ -67,14 +67,7 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 %%   Implentation note: Always call rmr_symlinks/1 ASAP.
 -spec fetch (filelib:dirname(), source()) -> ok.
 
-fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title
-                                                    , type = Type }}) ->
-    Name = lists:last(string:tokens(Url, "/")),
-    %% GitHub is special…
-    case {Type, Title} of
-        {tag, "v"++Shortened} -> UnZipped = Name ++"-"++ Shortened;
-        _                     -> UnZipped = Name ++"-"++ Title
-    end,
+fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title }}) ->
     Zipped = Title ++".zip",
     ZipUrl = Url ++"/archive/"++ Zipped,
     eo_os:chksh(fetch_curl, Dir,
@@ -83,6 +76,8 @@ fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title
                 [Zipped,ZipUrl], infinity),
     AbsZipped = filename:join(Dir, Zipped),
     {ok,_} = zip:extract(AbsZipped, [{cwd,Dir}]),
+    [UnZipped] = [D || D <- filelib:wildcard("*", Dir)
+                           , filelib:is_dir(filename:join(Dir, D))],
     eo_util:rmr_symlinks(Dir),
     eo_util:mv_all(UnZipped, Dir),
     file:delete(AbsZipped);
