@@ -68,16 +68,15 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 -spec fetch (filelib:dirname(), source()) -> ok.
 
 fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title }}) ->
-    Zipped = Title ++".zip",
-    ZipUrl = Url ++"/archive/"++ Zipped,
+    ZipUrl = Url ++"/archive/"++ Title ++".zip",
     eo_os:chksh(fetch_curl, Dir,
                 "curl --fail --silent --show-error --location"
-                " --output '~s' '~s'",
-                [Zipped,ZipUrl], infinity),
-    AbsZipped = filename:join(Dir, Zipped),
+                " --output repo.zip '~s'",
+                [ZipUrl], infinity),
+    AbsZipped = filename:join(Dir, "repo.zip"),
     {ok,_} = zip:extract(AbsZipped, [{cwd,Dir}]),
     [UnZipped] = [D || D <- filelib:wildcard("*", Dir)
-                           , filelib:is_dir(filename:join(Dir, D))],
+                           , D =/= "repo.zip"],
     eo_util:rmr_symlinks(Dir),
     eo_util:mv_all(UnZipped, Dir),
     file:delete(AbsZipped);
