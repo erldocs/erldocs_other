@@ -30,7 +30,7 @@
 -spec refs (source()) -> {ok, [rev()]} | error.
 
 refs ({git, Url, _Rev}) ->
-    case eo_os:sh("git ls-remote --heads --tags '~s'", [Url]) of
+    case eo_os:sh("git ls-remote --heads --tags '~s'", [Url], infinity) of
         {0,R} ->
             Branches  = [#rev{commit=Commit, type=branch, id=Branch}
                          || {Commit, "refs/heads/"++Branch} <- R],
@@ -48,7 +48,9 @@ refs ({git, Url, _Rev}) ->
 
 refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
     Url = "http://"++Name++".googlecode.com/svn",
-    case eo_os:sh("svn ls --verbose '~s/branches' '~s/tags' '~s/trunk'", [Url,Url,Url]) of
+    case eo_os:sh( "svn ls --verbose '~s/branches' '~s/tags' '~s/trunk'"
+                 , [Url,Url,Url], infinity)
+    of
         {0,R} ->
             Dirs = [ begin
                          Row = string:tokens(X, " "),
