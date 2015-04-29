@@ -11,7 +11,7 @@
 -define(NOTE(Cat, Fmt, Args), ?_LOG(">>> [" ++ Cat ++ "] ", Fmt, Args)).
 -define(NOTE(Cat, Str),       ?_LOG(">>> [" ++ Cat ++ "] ", Str)).
 
--define(PWD(Dir),             ?_LOG("$ ", "cd ~p", [Dir])).
+-define(PWD(Dir),             ?_LOG("$ ", "cd '~s'", [Dir])).
 -define(RUN(Cmd, Timeout),    ?_LOG("$ ", "~p  `~s`", [Timeout,Cmd])).
 
 %% End of File.

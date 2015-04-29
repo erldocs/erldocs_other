@@ -67,7 +67,7 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 
 %% @doc Get content of revision of repo the fastest way possible.
 %%   Implentation note: Always call rmr_symlinks/1 ASAP.
--spec fetch (filelib:dirname(), source()) -> ok.
+-spec fetch (filelib:dirname(), source()) -> {ok, file:filename()}.
 
 fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title }}) ->
     ZipUrl = Url ++"/archive/"++ Title ++".zip",
@@ -76,33 +76,41 @@ fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title }}) ->
                 " --output repo.zip '~s'",
                 [ZipUrl], infinity),
     AbsZipped = filename:join(Dir, "repo.zip"),
+    %% Note: the zip has a root directory
     {ok,_} = zip:extract(AbsZipped, [{cwd,Dir}]),
-    [UnZipped] = [D || D <- filelib:wildcard("*", Dir)
-                           , D =/= "repo.zip"],
-    eo_util:rmr_symlinks(Dir),
-    eo_util:mv_all(UnZipped, Dir),
-    file:delete(AbsZipped);
+    [AbsUnZipped] = [filename:join(Dir, D) || D <- filelib:wildcard("*", Dir)
+                                                  , D =/= "repo.zip"],
+    eo_util:rmr_symlinks(AbsUnZipped),
+    AbsTitledPath = filename:join(Dir, repo_name(Url)),
+    eo_util:mv([AbsUnZipped], AbsTitledPath),
+    ok = file:delete(AbsZipped),
+    {ok, AbsTitledPath};
 
-fetch (Dir, {git, "https://bitbucket.org/"++Repo, #rev{ id = Branch }}) ->
+fetch (Dir, {git, "https://bitbucket.org/"++Repo=Url, #rev{ id = Branch }}) ->
     %% Note: git-archive does not accept SHA1s
     ArchUrl = "git@bitbucket.org:"++ Repo,
     eo_os:chksh('fetch_git-archive', Dir,
                 "git archive --output repo.tar --remote='~s' '~s'",
                 [ArchUrl,Branch], infinity),
     AbsTarred = filename:join(Dir, "repo.tar"),
-    ok = erl_tar:extract(AbsTarred, [{cwd,Dir}]),
-    eo_util:rmr_symlinks(Dir),
-    file:delete(AbsTarred);
+    AbsTitledPath = filename:join(Dir, repo_name(Url)),
+    %% Note: the tarball does not have a root directory
+    ok = erl_tar:extract(AbsTarred, [{cwd,AbsTitledPath}]),
+    eo_util:rmr_symlinks(AbsTitledPath),
+    ok = file:delete(AbsTarred),
+    {ok, AbsTitledPath};
 
 fetch (Dir, {git, Url, #rev{ id = Title }}) ->
+    AbsTitledPath = filename:join(Dir, repo_name(Url)),
     eo_os:chksh('fetch_git-clone', Dir,
                 "git clone --depth 1 '~s' --branch '~s' -- '~s'",
-                [Url,Title,Dir], infinity),
-    eo_util:rmr_symlinks(Dir);
+                [Url,Title,AbsTitledPath], infinity),
+    eo_util:rmr_symlinks(AbsTitledPath),
+    {ok, AbsTitledPath};
 
-fetch (Dir, {svn, "https://code.google.com/p/"++Name, #rev{ id = Title
-                                                          , type = Type
-                                                          , commit = Commit }}) ->
+fetch (Dir, {svn, "https://code.google.com/p/"++Name=Url, #rev{ id = Title
+                                                              , type = Type
+                                                              , commit = Commit }}) ->
     case {Title,Type} of
         {"trunk",branch} ->
             SvnUrl = "http://"++Name++".googlecode.com/svn/trunk";
@@ -113,8 +121,11 @@ fetch (Dir, {svn, "https://code.google.com/p/"++Name, #rev{ id = Title
     end,
     eo_os:chksh(fetch_svn, Dir, "svn export -r '~s' '~s'",
                 [Commit,SvnUrl], infinity),
-    eo_util:rmr_symlinks(Dir),
-    eo_util:mv_all(Title, Dir).
+    AbsExported = filename:join(Dir, hd(filelib:wildcard("*", Dir))),
+    eo_util:rmr_symlinks(AbsExported),
+    AbsTitledPath = filename:join(Dir, repo_name(Url)),
+    eo_util:mv([AbsExported], AbsTitledPath),
+    {ok, AbsTitledPath}.
 
 
 %% @doc Extract repo's name from repo's URL.
@@ -171,6 +182,12 @@ find (RegExp, Subject) ->
 trim_dotgit (Str) ->
     filename:basename(Str, ".git").
 
+trim_dangling_slash (Str) ->
+    case lists:suffix("/", Str) of
+        true  -> lists:droplast(Str);
+        false -> Str
+    end.
+
 dereference (Tag0) ->
     DerefToken = "^{}",
     Tag = string:sub_string(Tag0, 1, length(Tag0) - length(DerefToken)),
@@ -191,10 +208,11 @@ split_svn_ls ([{Co,Id}|Rest], Type, Acc) ->
     Rev = #rev{id=Id, commit=Co, type=Type},
     split_svn_ls(Rest, Type, [Rev|Acc]).
 
-trim_dangling_slash (Str) ->
-    case lists:suffix("/", Str) of
-        true  -> lists:droplast(Str);
-        false -> Str
-    end.
+
+h (X) when X < 10 -> $0 + X;
+h (X) when X < 16 -> $a + X - 10.
+
+uuid () ->
+    lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= crypto:rand_bytes(16) ]).
 
 %% End of Module.

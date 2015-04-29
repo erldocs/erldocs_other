@@ -17,7 +17,7 @@ new_test_tar (Url) ->
     UUID = make_name(Url),
     JailDir = filename:join("ebin", UUID),
     DestTar = filename:join(DataDir, UUID) ++ ".tar",
-    ok = filelib:ensure_dir(JailDir ++ "/"),
+    mkdir(JailDir),
     GenOpts = [ {website_dir, JailDir}
               , {dest,        JailDir}
               , {url, Url} ],
@@ -56,7 +56,7 @@ rmr (Dir) ->
 %% do :: (repo_url()) -> eunit_stuff()
 do (Url) ->
     %% Note: CWD = Git root
-    %% Generated: ebin/website.tld'user'reponame/{,tmp_random}
+    %% Generated: ebin/website.tld,user,reponame/{,tmp_random}
     {setup
     , fun () ->
               Dir = filename:join("ebin", make_name(Url)),
@@ -69,25 +69,29 @@ do (Url) ->
               DataDir = "test/eo_core_DATA",
               UUID = make_name(Url),
               JailDir = filename:join("ebin", UUID),
-              ok = filelib:ensure_dir(JailDir ++ "/"),
+              mkdir(JailDir),
               {ok, ArchExpected} = erl_tar:table(
                                      filename:join(DataDir, UUID) ++ ".tar"),
               GenOpts = [ {website_dir, JailDir}
                         , {dest,        JailDir}
-                        , {url, Url} ],
+                        , {url, Url}
+                        , {update_only, false}
+                        ],
               {ok, Url, _Dest, _Link} = eo_core:gen(GenOpts),
               ArchGot = list_files(JailDir),
               ?_assertEqual(lists:usort(ArchExpected), lists:usort(ArchGot))
       end}.
 
 make_name (Url) ->
-    Sep = <<",">>,
     Bin = list_to_binary(eo_scm:repo_local_path(Url)),
     binary_to_list(
-      binary:replace(Bin, <<"/">>, Sep, [global])).
+      binary:replace(Bin, <<"/">>, <<",">>, [global])).
 
 list_files (Dir) ->
     ListInsert = fun (X, Tail) -> [X|Tail] end,
     filelib:fold_files(Dir, ".+", true, ListInsert, []).
+
+mkdir (Dir) ->
+    ok = filelib:ensure_dir(Dir ++ "/").
 
 %% End of Module.

@@ -91,7 +91,7 @@ do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
     ?MILESTONE("Processing ~s\t~1000p", [Url,Rev]),
 
     ?MILESTONE("Fetching repo code"),
-    TitledPath = copy_repo(Rev, Method, Url, RepoName, Dest),
+    {ok, TitledPath} = copy_repo(Method, Url, RepoName, Dest, Rev),
 
     ?MILESTONE("Getting dependencies"),
     Deps = get_deps(TitledPath),
@@ -105,7 +105,7 @@ do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
     ?MILESTONE("Discovering other repos"),
     Discovered = repo_discovery(TitledPath),
 
-    ?u:rm_r(filename:dirname(TitledPath)),  %% rm titled repo
+    ?u:rm_r(filename:dirname(TitledPath)),
     Rev#rev{ discovered = Discovered
            , deps = Deps
            , builds = Builds
@@ -227,13 +227,13 @@ kf (Conf, Key) ->
             end
     end.
 
-copy_repo (Rev = #rev{id=Branch, type=RevType},
-           Method, Url, RepoName, DestDir) ->
+copy_repo (Method, Url, RepoName, DestDir, #rev{ id = Branch
+                                               , type = RevType
+                                               } = Rev) ->
     Name = make_name(RepoName, Branch, RevType),
-    TitledPath = filename:join([DestDir, Name, RepoName]),
+    TitledPath = filename:join([DestDir, Name]),
     mkdir(TitledPath),
-    eo_scm:fetch(TitledPath, {Method,Url,Rev}),
-    TitledPath.
+    eo_scm:fetch(TitledPath, {Method,Url,Rev}).
 
 get_deps (Path) ->
     case path_exists([Path, "rebar.config"]) of
