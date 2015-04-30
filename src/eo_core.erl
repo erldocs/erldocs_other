@@ -118,7 +118,7 @@ html_index (DocsRoot, Meta) ->
     IsTag = fun (#rev{type = tag}) -> true; (_branch) -> false end,
     {Tags, Branches} = lists:partition(IsTag, Revs),
     "<h3 id=\"tags\">Tags</h3>"
-        ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>"
+        ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>" %%FIXME table semver tags
         ++ "<br/>"
         ++ "\n\t<h3 id=\"branches\">Branches</h3>"
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>".
@@ -360,23 +360,22 @@ select_titles (OldMeta, NewRevs) ->
     end,
     F = fun (NewRev) -> is_skippable(OldRevs, NewRev) end,
     {Skippable, Todo} = lists:partition(F, NewRevs),
+    %% Note: deleted revs are lost
     {ok, Todo, Skippable}.
 
 is_skippable ([], _NewRev) -> false;
-is_skippable ([Rev|Rest], #rev{ type = Type
-                              , id = Id
-                              , commit = Commit
-                              } = NewRev) ->
-    case (Rev#rev.type == Type andalso
-          Rev#rev.id == Id andalso
-          Rev#rev.commit == Commit)
-        orelse Rev#rev.builds == undefined
+is_skippable ([#rev{ type = Type, id = Id} = OldRev | _Rest]
+             , #rev{ type = Type, id = Id} = NewRev) ->
+    case OldRev#rev.commit =/= NewRev#rev.commit
+        orelse OldRev#rev.builds == undefined
     of
-        true ->
+        true -> false;
+        false ->
             ?MILESTONE("Skipping ~s ~p", [NewRev#rev.type, NewRev#rev.id]),
-            true;
-        false -> is_skippable(Rest, NewRev)
-    end.
+            true
+    end;
+is_skippable ([_OldRev|Rest], NewRev) ->
+    is_skippable(Rest, NewRev).
 
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
