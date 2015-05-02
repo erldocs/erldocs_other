@@ -36,7 +36,7 @@ fabs (Fn) ->
 read_URLs (File) ->
     {ok, Raw} = file:read_file(File),
     Bins = binary:split(Raw, <<"\n">>, [global]),
-    lists:filtermap(fun eo_scm:url/1, Bins).
+    [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>].
 
 seq_gen (_SiteDir, _TmpDir, []) -> ok;
 seq_gen (SiteDir, TmpDir, [URL|Rest]) ->
@@ -47,7 +47,6 @@ seq_gen (SiteDir, TmpDir, [URL|Rest]) ->
           , {update_only, true}
           ],
     io:format("~p Arg ~10000p\n", [now(),Arg]),
-    eo_util:rm_r(filename:join(SiteDir, eo_scm:repo_local_path(Url))),
     Res = (catch (eo_core:gen(Arg))),
     io:format("Res ~10000p\n", [Res]),
     seq_gen(SiteDir, TmpDir, Rest).
