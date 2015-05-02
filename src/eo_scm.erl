@@ -161,6 +161,8 @@ method ("https://code.google.com/p/"++_) -> svn.
 %%   Note: lists:filtermap/2-ready output.
 -spec url (string()) -> {true, repo_url()} | false.
 
+url (Bin) when is_binary(Bin) ->
+    url(binary_to_list(Bin));
 url (URL0) ->
     Url = string:to_lower(URL0),
     case find("(github\\.com|bitbucket\\.org)[:/]([^:/]+)/([^/]+)", Url) of
