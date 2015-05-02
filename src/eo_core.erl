@@ -118,26 +118,98 @@ html_index (DocsRoot, Meta) ->
     IsTag = fun (#rev{type = tag}) -> true; (_branch) -> false end,
     {Tags, Branches} = lists:partition(IsTag, Revs),
     "<h3 id=\"tags\">Tags</h3>"
-        ++ "\n\t<p>" ++ list_titles(DocsRoot,Tags) ++ "</p>" %%FIXME table semver tags
+        ++ "\n\t" ++ maybe_list_semver(DocsRoot, Tags)
         ++ "<br/>"
         ++ "\n\t<h3 id=\"branches\">Branches</h3>"
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>".
 
 list_titles (DocsRoot, Revs) ->
-    Items = [ case Builds of
-                  true ->
-                      "<a href=\""++Title++"\">"++Title++"</a>";
-                  false ->
-                      Doc = filename:join(DocsRoot, Title),
-                      filelib:is_dir(Doc) andalso ?u:rm_r(Doc),
-                      Title
-              end || #rev{ id = Title
-                         , builds = Builds
-                         } <- Revs ],
-    case Items of
+    case [list_rev(DocsRoot, Rev) || Rev <- Revs] of
         [] -> "(none)";
-        _  -> string:join(Items, " &nbsp; ")
+        Items  -> string:join(Items, " &nbsp; ")
     end.
+
+%%FIXME: escape htmlentities
+list_rev (_Dir, #rev{ id = Id, builds = true }) ->
+    "<a href=\"" ++ Id ++ "\">" ++ Id ++ "</a>";
+list_rev (Dir, #rev{ id = Id, builds = false }) ->
+    Doc = filename:join(Dir, Id),
+    filelib:is_dir(Doc) andalso ?u:rm_r(Doc),
+    Id.
+
+maybe_list_semver (Dir, Tags) ->
+    IsSemVer = fun (#rev{id = Id}) -> eo_vsn:is_vsn(Id) end,
+    case lists:any(IsSemVer, Tags) of
+        true  -> "<br/>" ++ list_semver(Dir, Tags);
+        false -> "<p>" ++ list_titles(Dir, Tags) ++ "</p>"
+    end.
+
+get_semver (#rev{id = Id} = Rev) ->
+    case eo_vsn:get_vsn(Id) of
+        {true, SemVer} -> {true, {SemVer, Rev}};
+        false -> false
+    end.
+
+list_semver (Dir, Tags) ->
+    IsOther   = fun (#rev{id = Id}) -> not eo_vsn:is_vsn(Id) end,
+    CmpOthers = fun (#rev{id = LId}, #rev{id = RId}) -> LId =< RId end,
+    CmpSemVers =
+        fun ({LSemVer,_LRev}, {RSemVer,_RRev}) ->
+                eo_vsn:'=<'(LSemVer, RSemVer)
+        end,
+    case lists:sort(CmpOthers, lists:filter(IsOther, Tags)) of
+        [] ->      Others = [];
+        Others0 -> Others = [{"(other)", Others0}]
+    end,
+    SemVers = lists:sort(CmpSemVers, lists:filtermap(fun get_semver/1, Tags)),
+    tags_table(Dir, Others ++ group_by_major(SemVers)).
+
+group_by_major ([{SemVer,Rev}|TaggedSemVers]) ->
+    group_by_major({hd(SemVer),[Rev]}, TaggedSemVers, [], 1, 1).
+group_by_major ({Major,Revs}, [{[Major|_],Rev}|TaggedSemVers], Acc, Current, Top) ->
+    group_by_major({Major,[Rev|Revs]}, TaggedSemVers, Acc, Current+1, Top);
+group_by_major (Above, [{[NewMajor|_],Rev}|TaggedSemVers], Acc, Current, Top) ->
+    case {Current, Top} of
+        {Bigger, ThanThis} when Bigger >= ThanThis ->
+            group_by_major({NewMajor,[Rev]}, TaggedSemVers, [{Above,Current}|Acc], 1, Bigger);
+        {_Smaller, ThanThis} ->
+            group_by_major({NewMajor,[Rev]}, TaggedSemVers, [{Above,Current}|Acc], 1, ThanThis)
+    end;
+group_by_major (Above, [], Acc, Current, Top) ->
+    Max = max(Current, Top),
+    lists:foldl( fun ({{Header,Lines},NLines}, Columns) ->
+                         Blanks = lists:duplicate(Max - NLines, ""),
+                         [ [Header] ++ Lines ++ Blanks | Columns]
+                 end , [], [{Above,Current}|Acc] ).
+
+tags_table (Dir, Columns) ->
+    [Headers0|Body0] = transpose(Columns),
+    Headers = [ case Header of
+                    Major when is_integer(Major) ->
+                        "v" ++ integer_to_list(Major) ++ ".*";
+                    Text -> Text
+                end || Header <- Headers0],
+    Body = [[case Rev of
+                 "" -> "";
+                 _ -> list_rev(Dir, Rev)
+             end || Rev <- Revs]
+            || Revs <- Body0],
+    "<table>\n"
+        "<thead>\n" ++ html_row(Headers) ++ "</thead>\n"
+        "<tbody>\n" ++ lists:flatmap(fun html_row/1, Body) ++ "</tbody>\n"
+    "</table>\n".
+
+html_row (TDs) ->
+    "<tr>\n"
+        ++ lists:flatmap(fun (TD) -> "<td>" ++ TD ++ "</td>\n" end, TDs) ++
+    "</tr>\n".
+
+%% http://erlang.org/pipermail/erlang-questions/2012-October/069856.html
+transpose ([[X|Xs] | Xss]) ->
+    [[X | [H || [H|_] <- Xss]]
+     | transpose([Xs | [T || [_|T] <- Xss]])];
+transpose ([[]|Xss]) -> transpose(Xss);
+transpose ([]) -> [].
 
 put_repo_index (Conf, DocsRoot, Meta) ->
     Args = [ {title,   kf(Meta, target_path)}
