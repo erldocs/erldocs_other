@@ -20,6 +20,8 @@
 
         , rebar_get_deps/1
         , rebar_delete_deps/1
+
+        , uuid/0
         ]).
 
 -include("logging.hrl").
@@ -108,7 +110,15 @@ rebar_delete_deps (_RepoDir) -> %mind rebar hooks!!
     %%{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null"),
     ok.%%FIXME
 
+
+uuid () ->
+    lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= crypto:rand_bytes(16) ]).
+
 %% Internals
+
+h (X) when X < 10 -> $0 + X;
+h (X) when X < 16 -> $a + X - 10.
+
 
 get_deps (RepoDir, Deps) ->
     TitledDir = filename:dirname(RepoDir),

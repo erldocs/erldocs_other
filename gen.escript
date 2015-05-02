@@ -14,7 +14,6 @@
 
 main ([SiteDir, TmpDir, ListFile]) ->
     List = read_URLs(ListFile),
-    random:seed(now()),
     seq_gen(fabs(SiteDir), fabs(TmpDir), List);
 
 main (_) ->
@@ -41,7 +40,7 @@ read_URLs (File) ->
 seq_gen (_SiteDir, _TmpDir, []) -> ok;
 seq_gen (SiteDir, TmpDir, [URL|Rest]) ->
     Arg = [ {website_dir, SiteDir}
-          , {dest, filename:join(TmpDir,random_str())}
+          , {dest, filename:join(TmpDir,eo_util:uuid())}
           , {base, "/"}
           , {url, URL}
           , {update_only, true}
@@ -50,9 +49,5 @@ seq_gen (SiteDir, TmpDir, [URL|Rest]) ->
     Res = (catch (eo_core:gen(Arg))),
     io:format("Res ~10000p\n", [Res]),
     seq_gen(SiteDir, TmpDir, Rest).
-
-random_str () ->
-    integer_to_list(
-      random:uniform(9999999999)).
 
 %% End of Module.

@@ -208,11 +208,4 @@ split_svn_ls ([{Co,Id}|Rest], Type, Acc) ->
     Rev = #rev{id=Id, commit=Co, type=Type},
     split_svn_ls(Rest, Type, [Rev|Acc]).
 
-
-h (X) when X < 10 -> $0 + X;
-h (X) when X < 16 -> $a + X - 10.
-
-uuid () ->
-    lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= crypto:rand_bytes(16) ]).
-
 %% End of Module.
