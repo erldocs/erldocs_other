@@ -78,11 +78,15 @@ fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title }}) ->
     AbsZipped = filename:join(Dir, "repo.zip"),
     %% Note: the zip has a root directory
     {ok,_} = zip:extract(AbsZipped, [{cwd,Dir}]),
-    [AbsUnZipped] = [filename:join(Dir, D) || D <- filelib:wildcard("*", Dir)
-                                                  , D =/= "repo.zip"],
-    eo_util:rmr_symlinks(AbsUnZipped),
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
-    eo_util:mv([AbsUnZipped], AbsTitledPath),
+    case [filename:join(Dir, D) || D <- filelib:wildcard("*", Dir)
+                                       , D =/= "repo.zip"]
+    of
+        [] -> eo_util:mkdir(AbsTitledPath);
+        [AbsUnZipped] ->
+            eo_util:rmr_symlinks(AbsUnZipped),
+            eo_util:mv([AbsUnZipped], AbsTitledPath)
+    end,
     ok = file:delete(AbsZipped),
     {ok, AbsTitledPath};
 

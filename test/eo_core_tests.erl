@@ -17,7 +17,7 @@ new_test_tar (Url) ->
     UUID = make_name(Url),
     JailDir = filename:join("ebin", UUID),
     DestTar = filename:join(DataDir, UUID) ++ ".tar",
-    mkdir(JailDir),
+    eo_util:mkdir(JailDir),
     GenOpts = [ {website_dir, JailDir}
               , {dest,        JailDir}
               , {url, Url} ],
@@ -69,7 +69,7 @@ do (Url) ->
               DataDir = "test/eo_core_DATA",
               UUID = make_name(Url),
               JailDir = filename:join("ebin", UUID),
-              mkdir(JailDir),
+              eo_util:mkdir(JailDir),
               {ok, ArchExpected} = erl_tar:table(
                                      filename:join(DataDir, UUID) ++ ".tar"),
               GenOpts = [ {website_dir, JailDir}
@@ -90,8 +90,5 @@ make_name (Url) ->
 list_files (Dir) ->
     ListInsert = fun (X, Tail) -> [X|Tail] end,
     filelib:fold_files(Dir, ".+", true, ListInsert, []).
-
-mkdir (Dir) ->
-    ok = filelib:ensure_dir(Dir ++ "/").
 
 %% End of Module.

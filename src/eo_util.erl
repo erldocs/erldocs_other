@@ -21,6 +21,7 @@
         , rebar_get_deps/1
         , rebar_delete_deps/1
 
+        , mkdir/1
         , uuid/0
         ]).
 
@@ -110,6 +111,9 @@ rebar_delete_deps (_RepoDir) -> %mind rebar hooks!!
     %%{0,_} = sh(RepoDir, "rebar delete-deps  >/dev/null"),
     ok.%%FIXME
 
+
+mkdir (Dir) ->
+    ok = filelib:ensure_dir(Dir ++ "/").
 
 uuid () ->
     lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= crypto:rand_bytes(16) ]).

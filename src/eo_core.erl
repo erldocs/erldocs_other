@@ -21,9 +21,9 @@
 
 gen (Conf) ->
     Odir    = kf(Conf, website_dir),
-    mkdir(Odir),
+    eo_util:mkdir(Odir),
     Tmp     = kf(Conf, dest),
-    mkdir(Tmp),
+    eo_util:mkdir(Tmp),
     Logfile = filename:join(Tmp, "_.txt"),
     case main([ {dest, Tmp}
               , {logfile, Logfile} ] ++ Conf) of
@@ -36,7 +36,7 @@ gen (Conf) ->
             TargetPath = eo_scm:repo_local_path(Url)
     end,
     Dest = filename:join(Odir, TargetPath),
-    mkdir(Dest),
+    eo_util:mkdir(Dest),
     ?u:mv([Logfile,metafile(Tmp)], Dest),
     replace_dir(Dest, Tmp, Conf),
     {ok, Url, Dest, "http://other.erldocs.com/"++TargetPath}.
@@ -60,11 +60,11 @@ main_ (Conf) ->
     RepoName   = eo_scm:repo_name(Url),
 
     Dest     = kf(Conf, dest),
-%    mkdir(Dest), if nothing there, mkdir; else crash.
+%    eo_util:mkdir(Dest), if nothing there, mkdir; else crash.
     TmpDir   = filename:join(Dest, RepoName),
-    mkdir(TmpDir),
+    eo_util:mkdir(TmpDir),
     DocsRoot = filename:join(Dest, "repo"),
-    mkdir(DocsRoot),
+    eo_util:mkdir(DocsRoot),
     MetaFile = metafile(Dest),
 
     ?MILESTONE("Extracting meta information"),
@@ -260,7 +260,7 @@ discover_urls (Seps, Mid, Bin) ->
 erldocs (Conf, DocsRoot, #rev{id=Branch}, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
     ?MILESTONE("Generating erldocs into ~s", [DocsDest]),
-    mkdir(DocsDest),
+    eo_util:mkdir(DocsDest),
     Args = [ Path
            , "-o",     DocsDest
            , "--base", kf(Conf,base)
@@ -304,7 +304,7 @@ copy_repo (Method, Url, RepoName, DestDir, #rev{ id = Branch
                                                } = Rev) ->
     Name = make_name(RepoName, Branch, RevType),
     TitledPath = filename:join([DestDir, Name]),
-    mkdir(TitledPath),
+    eo_util:mkdir(TitledPath),
     eo_scm:fetch(TitledPath, {Method,Url,Rev}).
 
 get_deps (Path) ->
@@ -335,9 +335,6 @@ path_exists (PathToJoin) ->
 
 rmdir (Dir) ->
     ok = file:del_dir(Dir).
-
-mkdir (Dir) ->
-    ok = filelib:ensure_dir(Dir ++ "/").
 
 
 replace_dir (Dest, Tmp, Conf) ->
@@ -431,7 +428,7 @@ select_titles (OldMeta, NewRevs) ->
         {revisions,Revs} -> OldRevs = Revs
     end,
     F = fun (NewRev) -> is_skippable(OldRevs, NewRev) end,
-    {Skippable, Todo} = lists:partition(F, NewRevs),
+    {Skippable, Todo} = partition_map(F, NewRevs),
     %% Note: deleted revs are lost
     {ok, Todo, Skippable}.
 
@@ -444,10 +441,20 @@ is_skippable ([#rev{ type = Type, id = Id} = OldRev | _Rest]
         true -> false;
         false ->
             ?MILESTONE("Skipping ~s ~p", [NewRev#rev.type, NewRev#rev.id]),
-            true
+            {true, OldRev}
     end;
 is_skippable ([_OldRev|Rest], NewRev) ->
     is_skippable(Rest, NewRev).
+
+partition_map (Fun, List) ->
+    lists:foldl(fun (Elt, {Satisfying,NotSatisfying}) ->
+                        case Fun(Elt) of
+                            false -> {Satisfying, [Elt|NotSatisfying]};
+                            {true,Val} -> {[Val|Satisfying], NotSatisfying};
+                            true -> {[Elt|Satisfying], NotSatisfying}
+                        end
+                end
+               , {[],[]}, List).
 
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
@@ -456,10 +463,14 @@ consult_meta (true, TargetPath) ->
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
             Forms = split_after_dot(Tokens, [], []),
-            [ begin
-                  {ok, Term} = erl_parse:parse_term(Form),
-                  Term
-              end || Form <- Forms ];
+            Terms = [ begin
+                          {ok, Term} = erl_parse:parse_term(Form),
+                          Term
+                      end || Form <- Forms ],
+            case lists:keyfind(vsn_format, 1, Terms) of
+                false -> [];
+                {vsn_format,N} when N > 1 -> Terms
+            end;
         _ -> []
     end.
 
