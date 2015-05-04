@@ -431,7 +431,7 @@ select_titles (OldMeta, NewRevs) ->
         {revisions,Revs} -> OldRevs = Revs
     end,
     F = fun (NewRev) -> is_skippable(OldRevs, NewRev) end,
-    {Skippable, Todo} = lists:partition(F, NewRevs),
+    {Skippable, Todo} = partition_map(F, NewRevs),
     %% Note: deleted revs are lost
     {ok, Todo, Skippable}.
 
@@ -444,10 +444,20 @@ is_skippable ([#rev{ type = Type, id = Id} = OldRev | _Rest]
         true -> false;
         false ->
             ?MILESTONE("Skipping ~s ~p", [NewRev#rev.type, NewRev#rev.id]),
-            true
+            {true, OldRev}
     end;
 is_skippable ([_OldRev|Rest], NewRev) ->
     is_skippable(Rest, NewRev).
+
+partition_map (Fun, List) ->
+    lists:foldl(fun (Elt, {Satisfying,NotSatisfying}) ->
+                        case Fun(Elt) of
+                            false -> {Satisfying, [Elt|NotSatisfying]};
+                            {true,Val} -> {[Val|Satisfying], NotSatisfying};
+                            true -> {[Elt|Satisfying], NotSatisfying}
+                        end
+                end
+               , {[],[]}, List).
 
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
@@ -456,10 +466,14 @@ consult_meta (true, TargetPath) ->
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
             Forms = split_after_dot(Tokens, [], []),
-            [ begin
-                  {ok, Term} = erl_parse:parse_term(Form),
-                  Term
-              end || Form <- Forms ];
+            Terms = [ begin
+                          {ok, Term} = erl_parse:parse_term(Form),
+                          Term
+                      end || Form <- Forms ],
+            case lists:keyfind(vsn_format, 1, Terms) of
+                false -> [];
+                {vsn_format,N} when N > 1 -> Terms
+            end;
         _ -> []
     end.
 
