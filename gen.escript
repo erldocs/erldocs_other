@@ -34,7 +34,10 @@ fabs (Fn) ->
 
 read_URLs (File) ->
     {ok, Raw} = file:read_file(File),
-    Bins = binary:split(Raw, <<"\n">>, [global]),
+    case binary:split(Raw, <<"\r\n">>, [global]) of
+        [Raw] -> Bins = binary:split(Raw, <<"\n">>, [global]);
+        Else ->  Bins = Else
+    end,
     [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>].
 
 seq_gen (_SiteDir, _TmpDir, []) -> ok;
