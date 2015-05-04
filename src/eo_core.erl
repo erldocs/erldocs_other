@@ -77,7 +77,7 @@ main_ (Conf) ->
     TBs = [do(TB, Method, Url, RepoName, Conf, DocsRoot, Dest)
            || TB <- ToDo] ++ Skippable,
     ?MILESTONE("Finishing up"),
-    MetaRest = [ {revisions, TBs}
+    MetaRest = [ {revisions, lists:sort(TBs)}
                , {time_end, utc()}
                ],
     to_file(MetaFile, MetaRest, [append]),
