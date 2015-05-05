@@ -43,11 +43,10 @@ gen (Conf) ->
 
 main (Conf) ->
     inets:start(),
-    try
+    try %%FIXME: is there something to catch here?
         main_(Conf)
     catch Type:Error ->
-            E = [?MODULE, erlang:get_stacktrace(), {Type,Error}],
-            ?MILESTONE("Error running ~p:\n\t~p\n~p", E),
+            E = show_error(Type, Error),
             stop_output_redirection(),
             E
     end.
@@ -74,8 +73,13 @@ main_ (Conf) ->
     to_file(MetaFile, Meta),
 
     {ok, ToDo, Skippable} = select_titles(OldMeta, Revs),
-    TBs = [do(TB, Method, Url, RepoName, Conf, DocsRoot, Dest)
-           || TB <- ToDo] ++ Skippable,
+    TBs = [try do(TB, Method, Url, RepoName, Conf, DocsRoot, Dest) of
+               Rev = #rev{} -> Rev
+           catch
+               Type:Error ->
+                   show_error(Type, Error),
+                   TB#rev{ builds = undefined }
+           end || TB <- ToDo] ++ Skippable,
     ?MILESTONE("Finishing up"),
     MetaRest = [ {revisions, lists:sort(TBs)}
                , {time_end, utc()}
@@ -113,6 +117,11 @@ do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
 
 %% Internals
 
+show_error (Type, Error) ->
+    E = [?MODULE, erlang:get_stacktrace(), {Type,Error}],
+    ?MILESTONE("Error running ~p:\n\t~p\n~p", E),
+    E.
+
 html_index (DocsRoot, Meta) ->
     Revs = kf(Meta, revisions),
     IsTag = fun (#rev{type = tag}) -> true; (_branch) -> false end,
@@ -129,10 +138,11 @@ list_titles (DocsRoot, Revs) ->
         Items  -> string:join(Items, " &nbsp; ")
     end.
 
-%%FIXME: escape htmlentities
+%%FIXME: escape htmlentities (and security in path names?)
 list_rev (_Dir, #rev{ id = Id, builds = true }) ->
     "<a href=\"" ++ Id ++ "\">" ++ Id ++ "</a>";
-list_rev (Dir, #rev{ id = Id, builds = false }) ->
+list_rev (Dir, #rev{ id = Id }) ->
+    %% builds = false | undefined
     Doc = filename:join(Dir, Id),
     filelib:is_dir(Doc) andalso ?u:rm_r(Doc),
     Id.
