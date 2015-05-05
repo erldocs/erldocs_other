@@ -69,25 +69,25 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 %%   Implentation note: Always call rmr_symlinks/1 ASAP.
 -spec fetch (filelib:dirname(), source()) -> {ok, file:filename()}.
 
-fetch (Dir, {git, "https://github.com/"++_=Url, #rev{ id = Title }}) ->
-    ZipUrl = Url ++"/archive/"++ Title ++".zip",
+fetch (Dir, {git, "https://github.com/"++Repo=Url, #rev{ id = Title }}) ->
+    TarUrl = "https://codeload.github.com/"++ Repo ++"/legacy.tar.gz/"++ Title,
     eo_os:chksh(fetch_curl, Dir,
                 "curl --fail --silent --show-error --location"
-                " --output repo.zip '~s'",
-                [ZipUrl], infinity),
-    AbsZipped = filename:join(Dir, "repo.zip"),
-    %% Note: the zip has a root directory
-    {ok,_} = zip:extract(AbsZipped, [{cwd,Dir}]),
+                " --output repo.tar.gz '~s'",
+                [TarUrl], infinity),
+    AbsTarred = filename:join(Dir, "repo.tar.gz"),
+    %% Note: the tar has a root directory
+    ok = erl_tar:extract(AbsTarred, [{cwd,Dir}, compressed]),
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
     case [filename:join(Dir, D) || D <- filelib:wildcard("*", Dir)
-                                       , D =/= "repo.zip"]
+                                       , D =/= "repo.tar.gz"]
     of
         [] -> eo_util:mkdir(AbsTitledPath);
-        [AbsUnZipped] ->
-            eo_util:rmr_symlinks(AbsUnZipped),
-            eo_util:mv([AbsUnZipped], AbsTitledPath)
+        [AbsUnTarred] ->
+            eo_util:rmr_symlinks(AbsUnTarred),
+            eo_util:mv([AbsUnTarred], AbsTitledPath)
     end,
-    ok = file:delete(AbsZipped),
+    ok = file:delete(AbsTarred),
     {ok, AbsTitledPath};
 
 fetch (Dir, {git, "https://bitbucket.org/"++Repo=Url, #rev{ id = Branch }}) ->
