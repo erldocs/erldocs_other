@@ -168,14 +168,18 @@ list_semver (Dir, Tags) ->
                 eo_vsn:'=<'(LSemVer, RSemVer)
         end,
     case lists:sort(CmpOthers, lists:filter(IsOther, Tags)) of
-        [] ->      Others = [];
-        Others0 -> Others = [{"(other)", Others0}]
+        [] ->
+            Others = [],
+            OthersTop = 0;
+        Others0 ->
+            Others = [["(other)"] ++ Others0],
+            OthersTop = length(Others0)
     end,
     SemVers = lists:sort(CmpSemVers, lists:filtermap(fun get_semver/1, Tags)),
-    tags_table(Dir, Others ++ group_by_major(SemVers)).
+    tags_table(Dir, Others ++ group_by_major(SemVers, OthersTop)).
 
-group_by_major ([{SemVer,Rev}|TaggedSemVers]) ->
-    group_by_major({hd(SemVer),[Rev]}, TaggedSemVers, [], 1, 1).
+group_by_major ([{SemVer,Rev}|TaggedSemVers], OthersTop) ->
+    group_by_major({hd(SemVer),[Rev]}, TaggedSemVers, [], 1, OthersTop).
 group_by_major ({Major,Revs}, [{[Major|_],Rev}|TaggedSemVers], Acc, Current, Top) ->
     group_by_major({Major,[Rev|Revs]}, TaggedSemVers, Acc, Current+1, Top);
 group_by_major (Above, [{[NewMajor|_],Rev}|TaggedSemVers], Acc, Current, Top) ->
