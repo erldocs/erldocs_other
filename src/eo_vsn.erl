@@ -17,7 +17,7 @@
 
 %% API
 
--spec get_vsn (nonempty_string()) -> vsn().
+-spec get_vsn (nonempty_string()) -> {true,vsn()} | false.
 get_vsn (Str) ->
     case re:run( Str, "^v?(\\d+(?:\\.\\d+)*)(?:[^\\d].*)?$"
                , [{capture,all_but_first,list}] ) of

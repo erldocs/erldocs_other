@@ -18,7 +18,7 @@ distclean: clean clean-escript clean-deps
 
 debug: debug-app
 
-dialyze: app
+dialyze:
 	dialyzer --src src/ --plt ~/.dialyzer_plt --no_native  -Werror_handling -Wrace_conditions -Wunmatched_returns -Wunderspecs
 
 test: eunit

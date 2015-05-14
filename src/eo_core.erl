@@ -77,7 +77,7 @@ main_ (Conf) ->
                Rev = #rev{} -> Rev
            catch
                Type:Error ->
-                   show_error(Type, Error),
+                   _ = show_error(Type, Error),
                    TB#rev{ builds = undefined }
            end || TB <- ToDo] ++ Skippable,
     ?MILESTONE("Finishing up"),
@@ -460,14 +460,15 @@ is_skippable ([#rev{ type = Type, id = Id} = OldRev | _Rest]
 is_skippable ([_OldRev|Rest], NewRev) ->
     is_skippable(Rest, NewRev).
 
+-spec partition_map (fun((A) -> boolean()|{true,B}), [A]) -> {[A|B], [A]}.
 partition_map (Fun, List) ->
-    lists:foldl(fun (Elt, {Satisfying,NotSatisfying}) ->
-                        case Fun(Elt) of
-                            false -> {Satisfying, [Elt|NotSatisfying]};
-                            {true,Val} -> {[Val|Satisfying], NotSatisfying};
-                            true -> {[Elt|Satisfying], NotSatisfying}
-                        end
-                end
+    lists:foldl( fun (Elt, {Satisfying,NotSatisfying}) ->
+                         case Fun(Elt) of
+                             %% true ->    {[Elt|Satisfying], NotSatisfying};
+                             false ->      {Satisfying,  [Elt|NotSatisfying]};
+                             {true,Val} -> {[Val|Satisfying], NotSatisfying}
+                         end
+                 end
                , {[],[]}, List).
 
 consult_meta (false, _TargetPath) -> [];
