@@ -14,7 +14,7 @@
 
 main ([SiteDir, TmpDir, ListFile]) ->
     List = read_URLs(ListFile),
-    seq_gen(fabs(SiteDir), fabs(TmpDir), List);
+    seq_gen(fabs(SiteDir), fabs(TmpDir), List, length(List));
 
 main (_) ->
     usage().
@@ -40,17 +40,17 @@ read_URLs (File) ->
     end,
     [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>].
 
-seq_gen (_SiteDir, _TmpDir, []) -> ok;
-seq_gen (SiteDir, TmpDir, [URL|Rest]) ->
+seq_gen (_SiteDir, _TmpDir, [], _) -> ok;
+seq_gen (SiteDir, TmpDir, [URL|Rest], N) ->
     Arg = [ {website_dir, SiteDir}
           , {dest, filename:join(TmpDir,eo_util:uuid())}
           , {base, "/"}
           , {url, URL}
           , {update_only, true}
           ],
-    io:format("~p Arg ~10000p\n", [now(),Arg]),
+    io:format("~p ~p Arg ~10000p\n", [N,now(),Arg]),
     Res = (catch (eo_core:gen(Arg))),
-    io:format("Res ~10000p\n", [Res]),
-    seq_gen(SiteDir, TmpDir, Rest).
+    io:format("~p Res ~10000p\n", [N,Res]),
+    seq_gen(SiteDir, TmpDir, Rest, N-1).
 
 %% End of Module.
