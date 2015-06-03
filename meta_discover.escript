@@ -11,10 +11,8 @@
 %% API
 
 main ([Dir]) ->
-    F = fun (File, _Acc) ->
-                io:format(" -> ~p\n", [File]),
-                {ok, Terms} = file:consult(File),
-                case lists:keyfind(revisions, 1, Terms) of
+    F = fun (Meta, _Acc) ->
+                case lists:keyfind(revisions, 1, Meta) of
                     {revisions, Revs} ->
                         Discovered = [Urls || #rev{discovered = Urls} <- Revs];
                     false ->
@@ -22,7 +20,7 @@ main ([Dir]) ->
                 end,
                 print(Discovered)
         end,
-    filelib:fold_files(Dir, "meta\\.txt", true, F, ignore);
+    eo_meta:fold(Dir, F, ignore);
 
 main (_) ->
     usage().

@@ -5,6 +5,7 @@
   , {modules, [ erldocs_other
               , eo_core
               , eo_default
+              , eo_meta
               , eo_os
               , eo_scm
               , eo_util
