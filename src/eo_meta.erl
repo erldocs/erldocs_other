@@ -6,7 +6,9 @@
 %% eo_meta: 
 
 -export([fold/3]).
--export([load/1]).
+-export([ load/1
+	, iter/2
+	]).
 
 -export_type([ t/0
              , osite/0
@@ -15,11 +17,11 @@
 
 -type t() :: [{atom(),_}, ...].
 -type osite() :: file:name_all().
--type continuation() :: 
+-type continuation() :: pos_integer() | '$end'.
 
 %% API
 
--spec fold (osite(), fun((A, B) -> B), B) -> B.
+-spec fold (osite(), fun((_, B) -> B), B) -> B.
 fold (SiteDirectory, Fun, Acc0)
   when is_function(Fun, 2) ->
     F = fun (MetaFile, Acc) ->
@@ -34,7 +36,7 @@ load (SiteDirectory) ->
     F = fun (Meta, Count) ->
                 {target_path, TP} = lists:keyfind(target_path, Meta),
                 put(TP, Meta),
-                NewId = Count + 1
+                NewId = Count + 1,
                 put(NewId, TP),
                 NewId
         end,
@@ -49,7 +51,7 @@ iter (Fun, Continuation)
         N when N >= Continuation ->
             '$end';
         N ->
-            Fun(get(get(N))),
+            {Fun(get(get(N))), N +1}
     end.
 
 %% Internals
