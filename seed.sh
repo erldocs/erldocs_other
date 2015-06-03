@@ -1,5 +1,8 @@
 #!/bin/bash
 
+[[ $# -ne 1 ]] && echo "$0  ‹path to other.erldocs.com dir›" && exit 1
+osite="$1"
+
 # Extract URLs of Erlang projects to serve as seed.
 
 root='https://erlangcentral.org/erlang-projects'
@@ -27,3 +30,12 @@ for i in $(seq 1 "$max"); do
 
     sleep 2
 done
+[[ $? -eq 0 ]] || exit 2
+
+rm -rf $tmp/
+cat $outf | tr '[:upper:]' '[:lower:]' | sed 's%^https\?://%%' | sed 's%/$%%' >rs && rm $outf
+sort -u rs >s
+find . -name meta.txt | cut -c3- | sed 's/.........$//' >__
+sort -u __ >_
+comm -23 s _ >the_repos
+rm _ __ s rs
