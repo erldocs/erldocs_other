@@ -237,10 +237,12 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
 repo_discovery (RepoPath) ->
-    FilesFound = filelib:wildcard("rebar.config*", RepoPath)
-        ++ [ File || File <- [ "Makefile"
-                             , ".gitmodules" ],
-                     path_exists([RepoPath,File]) ],
+    FilesFound =
+        filelib:wildcard("rebar.config*", RepoPath) ++
+        filelib:wildcard("deps/*/rebar.config*", RepoPath) ++
+        [ File || File <- [ "Makefile"
+                          , ".gitmodules" ],
+                  path_exists([RepoPath,File]) ],
     UrlsFound = search_files(RepoPath, FilesFound),
     lists:usort(lists:filtermap(fun eo_scm:url/1, UrlsFound)).
 
