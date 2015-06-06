@@ -34,7 +34,7 @@ fold (SiteDirectory, Fun, Acc0)
 -spec load (osite()) -> pos_integer().
 load (SiteDirectory) ->
     F = fun (Meta, Count) ->
-                {target_path, TP} = lists:keyfind(target_path, Meta),
+                {target_path, TP} = lists:keyfind(target_path, 1, Meta),
                 put(TP, Meta),
                 NewId = Count + 1,
                 put(NewId, TP),

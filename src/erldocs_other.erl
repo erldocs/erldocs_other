@@ -16,10 +16,7 @@
 %% API
 
 main ([]) ->
-    ok = io:setopts([{encoding, unicode}]),
-    Arg0 = escript:script_name(),
-    io:format("Usage: \n\t~s  -o ‹output dir› [--logfile ‹path›] ‹repo URL›\n", [Arg0]),
-    halt(1);
+    usage();
 main (Args) ->
     parse(Args, #conf{}).
 
@@ -29,7 +26,7 @@ parse ([], Conf) ->
     Dest = Conf#conf.dest,
     URL  = Conf#conf.url,
     case (Dest == "") or (URL == "") of
-        true  -> main([]);
+        true  -> usage();
         false -> run([ {dest, filename:absname(Dest)}
                      , {url,  URL}
                      , {base, Conf#conf.base}
@@ -56,5 +53,11 @@ run (Args) ->
                       [?MODULE, erlang:get_stacktrace(), {Type,Error}]),
             halt(2)
     end.
+
+usage () ->
+    ok = io:setopts([{encoding, unicode}]),
+    Arg0 = escript:script_name(),
+    io:format("Usage: \n\t~s  -o ‹output dir› [--logfile ‹path›] ‹repo URL›\n", [Arg0]),
+    halt(1).
 
 %% End of Module.
