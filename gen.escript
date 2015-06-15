@@ -53,4 +53,13 @@ seq_gen (SiteDir, TmpDir, [URL|Rest], N) ->
     io:format("~p Res ~10000p\n", [N,Res]),
     seq_gen(SiteDir, TmpDir, Rest, N-1).
 
+uuid (URL) ->
+    case eo_scm:url(URL) of
+        {true, Url} ->
+            LocalPath = eo_scm:repo_local_path(Url),
+            eo_util:uuid(crypto:sha(LocalPath));
+        false ->
+            eo_util:uuid()
+    end.
+
 %% End of Module.

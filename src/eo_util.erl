@@ -23,6 +23,7 @@
 
         , mkdir/1
         , uuid/0
+        , uuid/1
         ]).
 
 -include("logging.hrl").
@@ -116,7 +117,9 @@ mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
 
 uuid () ->
-    lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= crypto:rand_bytes(16) ]).
+    uuid(crypto:rand_bytes(16)).
+uuid (Bin) ->
+    lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= Bin ]).
 
 %% Internals
 
