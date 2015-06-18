@@ -43,7 +43,7 @@ read_URLs (File) ->
 seq_gen (_SiteDir, _TmpDir, [], _) -> ok;
 seq_gen (SiteDir, TmpDir, [URL|Rest], N) ->
     Arg = [ {website_dir, SiteDir}
-          , {dest, filename:join(TmpDir,eo_util:uuid())}
+          , {dest, filename:join(TmpDir, uuid(URL))}
           , {base, "/"}
           , {url, URL}
           , {update_only, true}
@@ -57,7 +57,7 @@ uuid (URL) ->
     case eo_scm:url(URL) of
         {true, Url} ->
             LocalPath = eo_scm:repo_local_path(Url),
-            eo_util:uuid(crypto:sha(LocalPath));
+            eo_util:uuid(crypto:hash(sha, LocalPath));
         false ->
             eo_util:uuid()
     end.
