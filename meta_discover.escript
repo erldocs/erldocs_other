@@ -4,7 +4,7 @@
 %% See LICENSE for licensing information.
 %% -*- coding: utf-8 -*-
 
-%% discover: 
+%% discover: find every discovered repo.
 
 -include("include/erldocs_other.hrl").
 -mode(compile).
@@ -13,13 +13,8 @@
 
 main ([Dir]) ->
     F = fun (Meta, _Acc) ->
-                case lists:keyfind(revisions, 1, Meta) of
-                    {revisions, Revs} ->
-                        Discovered = [Urls || #rev{discovered = Urls} <- Revs];
-                    false ->
-                        Discovered = []
-                end,
-                print(Discovered)
+                Urlsz = [Rev#rev.discovered || Rev <- eo_meta:revisions(Meta)],
+                print(Urlsz)
         end,
     eo_meta:fold(Dir, F, ignore);
 

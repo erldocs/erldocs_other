@@ -22,12 +22,12 @@
 
 -type method() :: git | svn.
 -type repo_url() :: nonempty_string().
--type source() :: {method(), repo_url(), '_' | rev()}.
+-type source() :: {method(), repo_url(), '_' | eo_core:rev()}.
 
 %% API
 
 %% @doc Get revisions information of repo the fastest way possible
--spec refs (source()) -> {ok, [rev()]} | error.
+-spec refs (source()) -> {ok, [eo_core:rev()]} | error.
 
 refs ({git, Url, _Rev}) ->
     case eo_os:sh("git ls-remote --heads --tags '~s'", [Url], infinity) of

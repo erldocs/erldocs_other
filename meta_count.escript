@@ -4,7 +4,7 @@
 %% See LICENSE for licensing information.
 %% -*- coding: utf-8 -*-
 
-%% count: 
+%% count: extract some stats.
 
 -include("include/erldocs_other.hrl").
 -mode(compile).
@@ -13,7 +13,7 @@
 
 main ([Dir]) ->
     F = fun (Meta, {Repos, VersionsBuilt, VersionsFailed}) ->
-                {revisions, Revs} = lists:keyfind(revisions, 1, Meta),
+                Revs = eo_meta:revisions(Meta),
                 Built  = length([1 || #rev{builds = true}  <- Revs]),
                 Failed = length([1 || #rev{builds = false} <- Revs]),
                 {Repos+1, VersionsBuilt+Built, VersionsFailed+Failed}

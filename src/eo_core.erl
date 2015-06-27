@@ -5,12 +5,20 @@
 
 %% eo_core: main logic of the erldocs_other module.
 
+-include("erldocs_other.hrl").
+-include("logging.hrl").
+
 -export([ main/1
         , to_file/2
         , gen/1 ]).
 
--include("erldocs_other.hrl").
--include("logging.hrl").
+%% title/0 represents the name of either a branch or a tag
+-type title() :: string().
+-type rev() :: #rev{}.
+
+-export_type([ title/0
+             , rev/0
+             ]).
 
 -define(u, eo_util).
 
