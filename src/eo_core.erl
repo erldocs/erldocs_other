@@ -265,7 +265,7 @@ search_files (RepoPath, Files) ->
                   ".gitmodules" ->
                       discover_urls("\\s=",       Contents)
                    ++ discover_urls("\\s\"", "@", Contents);
-                  "rebar.config"++_ ->
+                  _ ->  %% "rebar.config"++_ ->%%FIXME maybe
                       discover_urls("\\s\"",      Contents)
                    ++ discover_urls("\\s\"", "@", Contents)
               end
