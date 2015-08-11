@@ -19,7 +19,7 @@
 
 -spec get_vsn (nonempty_string()) -> {true,vsn()} | false.
 get_vsn (Str) ->
-    case re:run( Str, "^[vV]?(\\d+(?:\\.\\d+)*)(?:[^\\d].*)?$"
+    case re:run( Str, "^[^\\d]*(\\d+(?:\\.\\d+)*)(?:[^\\d].*)?$"
                , [{capture,all_but_first,list}] ) of
         {match, [Found]} ->
             VSN = [list_to_integer(N) || N <- string:tokens(Found, ".")],

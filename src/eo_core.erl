@@ -208,7 +208,7 @@ tags_table (Dir, Columns) ->
     [Headers0|Body0] = transpose(Columns),
     Headers = [ case Header of
                     Major when is_integer(Major) ->
-                        "v" ++ integer_to_list(Major) ++ ".*";
+                        "v" ++ integer_to_list(Major);
                     Text -> Text
                 end || Header <- Headers0],
     Body = [[case Rev of

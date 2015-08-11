@@ -16,6 +16,7 @@
     , ?_assertEqual(true, lte("0.2.1", "0.2.2"))
     , ?_assertEqual(false, lte("16.0.1", "1.298.342"))
     , ?_assertEqual(true, lte("1.298.342", "16.0.1"))
+    , ?_assertEqual(false, lte("release-1.0.1", "near_alpha-0.9999.9999"))
     ].
 
 %% Internals
