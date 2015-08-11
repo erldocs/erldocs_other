@@ -70,7 +70,7 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 -spec fetch (filelib:dirname(), source()) -> {ok, file:filename()}.
 
 fetch (Dir, {git, "https://github.com/"++Repo=Url, #rev{ id = Title }}) ->
-    TarUrl = "https://codeload.github.com/"++ Repo ++"/legacy.tar.gz/"++ Title,
+    TarUrl = "https://codeload.github.com/"++ Repo ++"/tar.gz/"++ Title,
     eo_os:chksh(fetch_curl, Dir,
                 "curl --fail --silent --show-error --location"
                 " --output repo.tar.gz '~s'",
