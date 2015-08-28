@@ -26,11 +26,14 @@ for i in $(seq 1 "$max"); do
     curl -fsSLo $tmp/$i $root/$i
 
     # Extract projects' path
-    grep -P '"[^\s][^"]+"\s+target=[^,]+$' $tmp/$i | cut -d '"' -f 4 | tee --append $outf
-
-    sleep 2
+    for url in $(grep -P '"[^\s][^"]+"\s+target=[^,]+$' $tmp/$i | cut -d '"' -f 4); do
+	proj=$(echo $url | sed 's%https://%%;s%http://%%' | tr '[:upper:]' '[:lower:]')
+	[[ -f $osite/$proj/meta.txt ]] && continue
+	echo $proj
+	echo $proj >>$outf
+    done
 done
-[[ $? -eq 0 ]] || exit 2
+[[ $? -eq 0 ]] || exit 42
 
 rm -rf $tmp/
 cat $outf | tr '[:upper:]' '[:lower:]' | sed 's%^https\?://%%' | sed 's%/$%%' >rs && rm $outf
