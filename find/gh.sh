@@ -32,6 +32,7 @@ for ordering in asc desc; do
         for ((p=1; p<=100; p++)); do
             echo $p $category $ordering
             find $p $category $ordering
+            sleep 5
         done
     done
 done

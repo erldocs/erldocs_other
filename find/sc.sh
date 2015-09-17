@@ -27,4 +27,5 @@ function find() {
 for ((p=0; p<=49; p++)); do
     echo $p
     find $p
+    sleep 5
 done
