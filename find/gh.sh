@@ -2,12 +2,9 @@
 
 [[ $# -ne 1 ]] && echo "$0  ‹path to other.erldocs.com dir›" && exit 1
 osite="$1"
+outf=seed.gh
 
 # Extract URLs of Erlang projects to serve as seed.
-
-root='https://erlangcentral.org/erlang-projects'
-outf=seed.gh
-touch $outf
 
 source we.sh
 
@@ -27,12 +24,25 @@ function find() {
     done
 }
 
-for ordering in asc desc; do
-    for category in stars forks updated; do
-        for ((p=1; p<=100; p++)); do
-            echo $p $category $ordering
-            find $p $category $ordering
-            sleep 5
-        done
+function iter() {
+    local category=$1
+    local ordering=$2
+    for ((p=1; p<=100; p++)); do
+        echo $p $category $ordering
+        find $p $category $ordering
+        sleep 5
     done
-done
+}
+
+# for ordering in asc desc; do
+#     for category in stars forks updated; do
+#        iter $category $ordering
+#     done
+# done
+
+#iter stars asc
+#iter forks asc
+#iter updated asc
+#iter stars desc
+iter forks desc
+iter updated desc
