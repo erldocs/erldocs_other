@@ -20,8 +20,10 @@ new_test_tar (Url) ->
     eo_util:mkdir(JailDir),
     GenOpts = [ {website_dir, JailDir}
               , {dest,        JailDir}
-              , {url, Url} ],
-    {ok, Url, _Dest, _Link} = eo_core:gen(GenOpts),
+              , {url, Url}
+              , {update_only, false}
+              ],
+    {ok, _Url, _Dest, _Link} = eo_core:gen(GenOpts),
     ArchGot = list_files(JailDir),
     ok = erl_tar:create(DestTar, ArchGot),
     rmr(JailDir).
@@ -82,7 +84,8 @@ do (Url) ->
               ?_assertEqual(lists:usort(ArchExpected), lists:usort(ArchGot))
       end}.
 
-make_name (Url) ->
+make_name (Url0) ->
+    {true, Url} = eo_scm:url(Url0),
     Bin = list_to_binary(eo_scm:repo_local_path(Url)),
     binary_to_list(
       binary:replace(Bin, <<"/">>, <<",">>, [global])).
