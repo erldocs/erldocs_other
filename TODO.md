@@ -6,3 +6,10 @@
 * log what deps (rebar's or SCM’s) a repo’s rev depends on
 * HG support: fetch/2 would have to clone repo for each rev
 * For distributed generation, reduce with: `tar jxvf gend_repo.tar.bz2`
+* Tag a project using the 5 most outstanding words out of the project's doc / README
+* Boolean that says whether Erlang code was found somewhere in the project
+* Graph connecting all projects
+    * See forks of a project
+    * See most used projects (top 15)
+    * See most used version of a project (by:user, by:project)
+    * See most active projects
