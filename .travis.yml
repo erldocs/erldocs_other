@@ -1,4 +1,13 @@
 language: erlang
 otp_release:
-  - 17.4
-script: "make test"
+  - 18.0
+  - 17.5
+  - R16B02
+  - R15B03
+
+sudo: false
+
+script:
+  - make -j app
+
+after_success: make test
