@@ -6,7 +6,7 @@ osite="$1"
 # Extract URLs of Erlang projects to serve as seed.
 
 root='https://erlangcentral.org/erlang-projects'
-outf=repos.seed
+outf=seed.ec
 touch $outf
 
 # Temp dir
