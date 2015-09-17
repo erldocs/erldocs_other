@@ -6,8 +6,10 @@ osite="$1"
 # Extract URLs of Erlang projects to serve as seed.
 
 root='https://erlangcentral.org/erlang-projects'
-outf=gh.seed
+outf=seed.gh
 touch $outf
+
+source we.sh
 
 function REST() {
     local p=$1 # 1..100
@@ -17,7 +19,7 @@ function REST() {
 }
 
 function find() {
-    for found in $(we -O - "$(REST $*)" | grep -Eoa '<a href="/([^"]+)">\1</a>' | cut -d '"' -f 2); do
+    for found in $(we -O - "$(REST $*)" | grep -Eoa '<a href="/([^"]+)">\1</a>' | cut -d '"' -f 2 | tr '[:upper:]' '[:lower:]'); do
         proj=github.com$found
         [[ -f $osite/$proj/meta.txt ]] && continue
         echo $proj
