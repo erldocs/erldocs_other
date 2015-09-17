@@ -34,15 +34,21 @@ function iter() {
     done
 }
 
+
 # for ordering in asc desc; do
 #     for category in stars forks updated; do
 #        iter $category $ordering
 #     done
 # done
 
-#iter stars asc
-#iter forks asc
-#iter updated asc
-#iter stars desc
+iter stars asc
+sleep 30
+iter forks asc
+sleep 30
+iter updated asc
+sleep 30
+iter stars desc
+sleep 30
 iter forks desc
+sleep 30
 iter updated desc

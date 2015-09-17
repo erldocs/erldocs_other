@@ -2,12 +2,9 @@
 
 [[ $# -ne 1 ]] && echo "$0  ‹path to other.erldocs.com dir›" && exit 1
 osite="$1"
+outf=seed.sc
 
 # Extract URLs of Erlang projects to serve as seed.
-
-root='https://erlangcentral.org/erlang-projects'
-outf=seed.sc
-touch $outf
 
 source we.sh
 
@@ -23,6 +20,7 @@ function find() {
         echo $proj >>$outf
     done
 }
+
 
 for ((p=0; p<=49; p++)); do
     echo $p
