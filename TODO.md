@@ -13,3 +13,5 @@
     * See most used projects (top 15)
     * See most used version of a project (by:user, by:project)
     * See most active projects
+* Count of atoms introduced
+* Calls that can be dangerous (list_to_atom/1, …)
