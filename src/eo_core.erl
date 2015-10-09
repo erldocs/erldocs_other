@@ -483,8 +483,7 @@ partition_map (Fun, List) ->
 
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
-    Url = "http://other.erldocs.com/"++ TargetPath ++"/meta.txt",
-    case httpc:request(Url) of
+    case httpc:request(remote_meta_path(TargetPath)) of
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
             Forms = split_after_dot(Tokens, [], []),
@@ -498,6 +497,12 @@ consult_meta (true, TargetPath) ->
             end;
         _ -> []
     end.
+
+remote_meta_path (TargetPath) ->
+    %% "http://other.erldocs.com/"
+    "https://raw.githubusercontent.com/erldocs/other.erldocs.com/gh-pages/"
+        ++ TargetPath
+        ++ "/meta.txt".
 
 split_after_dot ([], _Acc, Forms) -> Forms;
 split_after_dot ([Token={dot,_}|Rest], Acc, Forms) ->
