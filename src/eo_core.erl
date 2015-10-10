@@ -483,6 +483,7 @@ partition_map (Fun, List) ->
 
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
+    application:ensure_all_started(ssl),
     case httpc:request(remote_meta_path(TargetPath)) of
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
