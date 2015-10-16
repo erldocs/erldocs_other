@@ -80,7 +80,8 @@ fetch (Dir, {git, "https://github.com/"++Repo=Url, #rev{ id = Title }}) ->
     ok = erl_tar:extract(AbsTarred, [{cwd,Dir}, compressed]),
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
     case [filename:join(Dir, D) || D <- filelib:wildcard("*", Dir)
-                                       , D =/= "repo.tar.gz"]
+                                       , D =/= "repo.tar.gz"
+                                       , filelib:is_dir(filename:join(Dir, D))]
     of
         [] -> eo_util:mkdir(AbsTitledPath);
         [AbsUnTarred] ->
