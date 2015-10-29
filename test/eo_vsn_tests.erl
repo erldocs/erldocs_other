@@ -19,6 +19,11 @@
     , ?_assertEqual(false, lte("release-1.0.1", "near_alpha-0.9999.9999"))
     ].
 
+parse_test_ () ->
+    [ ?_assertEqual({true,[3,5,4]}, eo_vsn:get_vsn("rabbitmq_v3_5_4_rc2"))
+    , ?_assertEqual({true,[1,8,0]}, eo_vsn:get_vsn("rabbitmq_v1_8_0"))
+    ].
+
 %% Internals
 
 lte (Barba, Papa) ->
