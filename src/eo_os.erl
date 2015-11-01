@@ -5,8 +5,8 @@
 
 %% eo_os: Erlang port to UNIX shell.
 
--export([ chksh/3, chksh/4, chksh/5
-        , sh/2, sh/3, sh/4 ]).
+-export([chksh/2, chksh/3, chksh/4]).
+-export([sh/1, sh/2, sh/3]).
 
 -include("logging.hrl").
 
@@ -14,64 +14,64 @@
 
 %% API
 
-chksh (Name, Fmt, Data) ->
-    chk(Name, sh(Fmt, Data)).
+chksh (Name, Cmd) ->
+    chk(Name, sh(Cmd)).
 
-chksh (Name, A1, A2, A3) ->
-    chk(Name, sh(A1, A2, A3)).
+chksh (Name, A1, A2) ->
+    chk(Name, sh(A1, A2)).
 
-chksh (Name, Dir, Fmt, Data, Timeout) ->
-    chk(Name, sh(Dir, Fmt, Data, Timeout)).
+chksh (Name, Dir, Cmd, Timeout) ->
+    chk(Name, sh(Dir, Cmd, Timeout)).
 
-sh (Fmt, Data) ->
-    sh (Fmt, Data, ?ShortCmdTimeout).
+sh (Dir, Cmd, Timeout) ->
+    run(Dir, Cmd, Timeout).
 
-sh (Fmt, Data, Timeout)
-  when is_atom(Timeout); is_integer(Timeout) ->
-    Cmd = lists:flatten(io_lib:format(Fmt++"  2>&1", Data)),
-    run(Cmd, Timeout);
-sh (Dir, Fmt, Data) ->
-    sh (Dir, Fmt, Data, ?ShortCmdTimeout).
+sh (Cmd, Timeout)
+  when not is_list(Timeout) ->
+    sh(".", Cmd, Timeout);
+sh (Dir, Cmd) ->
+    sh(Dir, Cmd, ?ShortCmdTimeout).
 
-sh (Dir, Fmt, Data, Timeout) ->
-    {ok, PreviousDir} = file:get_cwd(),
-    set_cwd(Dir),
-    Res = sh(Fmt, Data, Timeout),
-    set_cwd(PreviousDir),
-    Res.
+sh (Cmd) ->
+    sh(Cmd, ?ShortCmdTimeout).
 
 %% Internals
 
-set_cwd (Dir) ->
-    ?PWD(Dir),
-    ok = file:set_cwd(Dir).
+-type unchecked_return() :: {non_neg_integer(), string()}.
 
-chk (Func, ShCall) ->
-    case ShCall of
-        {0, _} -> ok;
-        {Code, Stdout0} ->
-            Stdout = iolists:filtermap(fun (X) -> X < 127 end, Stdout0),
-            ?NOTE("stdout", "~p", [Stdout]),
-            throw({sh,Func,error,Code,Stdout0})
-    end.
+-spec chk (atom(), unchecked_return()) -> ok | none().
+chk (_, {0,_}) -> ok;
+chk (Name, {Code,Stdout0}) ->
+    KeepASCII = fun (X) -> X < 127 end,
+    Stdout = iolists:filtermap(KeepASCII, Stdout0),
+    ?NOTE("stdout", "~p", [Stdout]),
+    throw({sh, Name, error, Code, Stdout0}).
 
-run (Cmd, Timeout) ->
-    ?RUN(Cmd, Timeout),
-    Port = open_port({spawn,Cmd}, [exit_status]),
+-spec run (file:filename_all(), [nonempty_string(),...], timeout()) -> unchecked_return().
+run (Dir, Cmd, Timeout) ->
+    ?RUN(Dir, Cmd, Timeout),
+    [Exe|Args] = Cmd,
+    Port = open_port( {spawn_executable, os:find_executable(Exe)}
+                    , [ exit_status
+                      , use_stdio
+                      , stderr_to_stdout
+                      , {args, Args}
+                      , {cd, Dir}
+                      %% , {parallelism, false}
+                      , {line, 64 * 64}
+                      ]
+                    ),
     loop(Port, [], Timeout).
 
 loop (Port, Data, Timeout) ->
     receive
-        {Port, {data, NewData}}  -> loop(Port, Data++'2tup'(NewData), Timeout);
-        {Port, {exit_status, S}} -> {S, Data}
+        {Port, {data, {eol, Line}}} ->
+            NewData = [list_to_tuple(string:tokens(Line, "\t")) | Data],
+            loop(Port, NewData, Timeout);
+        {Port, {exit_status, Code}} ->
+            {Code, lists:reverse(Data)}
     after Timeout ->
             {error, timeout}
     end.
-
-'2tup' (Str) ->
-    [ begin
-          Cols = string:tokens(Line, "\t"),
-          list_to_tuple(Cols)
-      end || Line <- string:tokens(Str, "\n") ].
 
 %% End of Module.

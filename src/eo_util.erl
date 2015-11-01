@@ -10,7 +10,6 @@
         , find_files/2
         , find_delete/2
         , rmr_symlinks/1
-        , du/1
         , mv/2
 
         , git_get_submodules/1
@@ -31,51 +30,40 @@
 %% API
 
 rmrf (Dir) ->
-    eo_os:chksh(rmrf, "rm -rf '~s'", [Dir]).
+    eo_os:chksh(rmrf, ["rm", "-rf", Dir]).
 
 rm_r (Dir) ->
-    eo_os:chksh(rm_r, "rm -r '~s'", [Dir]).
+    eo_os:chksh(rm_r, ["rm", "-r", Dir]).
 
 rm_r ([], _ChDir) -> ok;
 rm_r (Paths, ChDir) ->
-    Tildes = lists:duplicate(length(Paths), "~s"),
-    Quoted = string:join(Tildes, "' '"),
-    Cmd = "rm -r '"++ Quoted ++"'",
-    eo_os:chksh(rm_r2, ChDir, Cmd, Paths).
+    eo_os:chksh(rm_r2, ChDir, ["rm", "-r"] ++ Paths).
 
 cp (ChDir, Src, Dst) ->
-    eo_os:chksh(cp, ChDir, "cp -pr '~s' '~s'", [Src,Dst]).
+    eo_os:chksh(cp, ChDir, "cp", ["-pr", Src, Dst]).
 
 find_files (Dir, Names) ->
-    Tildes = lists:duplicate(length(Names), "~s"),
-    Quoted = string:join(Tildes, "' -or -name '"),
-    {0,R} = eo_os:sh(Dir, "find . -name '"++ Quoted ++"'", Names),
+    Cmd = ["find", ".", "-name"] ++ join_iolist(["-or", "-name"], Names),
+    {0,R} = eo_os:sh(Dir, Cmd),
     [Path || {"./"++Path} <- R].
 
 find_delete (Dir, Names) ->
-    Tildes = lists:duplicate(length(Names), "~s"),
-    Quoted = string:join(Tildes, "' -or -name '"),
-    Cmd = "find . \\( -name '"++ Quoted ++"' \\) -exec rm -r \"{}\" \\;",
-    {_Code,_} = eo_os:sh(Dir, Cmd, Names),
+    Cmd = ["find", ".", "\\(", "-name"]
+        ++ join_iolist(["-or","-name"], Names)
+        ++ ["\\)", "-exec", "rm", "-r", "\"{}\"", "\\;"],
+    {_Code,_} = eo_os:sh(Dir, Cmd),
     ok.
 
 rmr_symlinks (Dir) ->
-    eo_os:chksh(rmr_symlinks, Dir, "find -P . -type l -delete", []).
-
-du (Dir) ->
-    {0,R} = eo_os:sh(Dir, "du . | tail -n 1", []),
-    [{Size,_}] = R,
-    list_to_integer(Size).
+    eo_os:chksh(rmr_symlinks, Dir, ["find", "-P", ".", "-type", "l", "-delete"]).
 
 mv ([], _Dir) -> ok;
 mv (Paths, Dir) ->
-    Tildes = lists:duplicate(length(Paths), "~s"),
-    Quoted = string:join(Tildes, "' '"),
-    eo_os:chksh(mv, "mv '"++ Quoted ++"' '~s'", Paths++[Dir]).
+    eo_os:chksh(mv, ["mv"] ++ Paths ++ [Dir]).
 
 
 git_get_submodules (RepoDir) ->
-    eo_os:sh(RepoDir, "git submodule update --init --recursive", [], infinity).
+    eo_os:sh(RepoDir, ["git", "submodule", "update", "--init", "--recursive"], infinity).
 
 delete_submodules (_RepoDir) -> %No git command as of yet!
     %%cat gitmodules.txt | `which grep` -P '^\s*path\s+=' | sed 's/\s\*//' | cut -d ' ' -f 3
@@ -85,7 +73,7 @@ delete_submodules (_RepoDir) -> %No git command as of yet!
 %%FIXME git config --get remote.origin.url (for each remote)
 
 hg_test (Url) ->
-    case eo_os:sh("hg identify '~s'", [Url]) of
+    case eo_os:sh(["hg", "identify", Url]) of
         {0,_} -> true;
         {255,_} -> false
     end.
@@ -99,7 +87,7 @@ rebar_get_deps (RepoDir) ->
         []   -> ignore;
         Deps -> get_deps(RepoDir, Deps)
     end,
-    case eo_os:sh(RepoDir, "ls -1 deps/", []) of
+    case eo_os:sh(RepoDir, ["ls", "-1", "deps/"]) of
         {0,R} -> Dirs0 = R;
         {_,_} -> Dirs0 = []
     end,
@@ -132,8 +120,7 @@ get_deps (RepoDir, Deps) ->
     NewReFile = filename:join(TitledDir, "rebar_deps"),
     eo_core:to_file(NewReFile, [{deps,Deps}]),
     %% We don't want to stop if this fails
-    _ = eo_os:sh(RepoDir, "rebar --config '~s' get-deps",%  >/dev/null",
-                 [NewReFile], infinity),
+    _ = eo_core:sh(RepoDir, ["rebar", "--config", NewReFile, "get-deps"], infinity),
     rmr_symlinks(RepoDir).
 
 read_deps (RebarFile) ->
@@ -146,5 +133,12 @@ read_deps (RebarFile) ->
         _ ->
             []
     end.
+
+
+join_iolist (Sep, [H|T]) ->
+    %% [H|T] = ["a", "b", "c"].
+    %% Sep = ["-or", "-name"].
+    %% #=> ["a","-or","-name","b","-or","-name","c"]
+    lists:append([[H]] ++ lists:append([[Sep, [X]] || X <- T])).
 
 %% End of Module.

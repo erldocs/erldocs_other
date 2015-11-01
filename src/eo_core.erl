@@ -521,6 +521,7 @@ to_file (Path, Data, Options) ->
 
 start_output_redirection (standard_io) -> ok;
 start_output_redirection (LogFile) ->
+    ?DBG("logging to ~s", [LogFile]),
     put(previous_group_leader, group_leader()),
     {ok, Fd} = file:open(LogFile, [append]),
     group_leader(Fd, self()).
