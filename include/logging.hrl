@@ -12,6 +12,13 @@
 -define(NOTE(Cat, Str),       ?_LOG(">>> [" ++ Cat ++ "] ", Str)).
 
 -define(PWD(Dir),             ?_LOG("$ ", "cd '~s'", [Dir])).
--define(RUN(Cmd, Timeout),    ?_LOG("$ ", "~p  `~s`", [Timeout,Cmd])).
+-define(RUN(Dir, Cmd, Timeout),
+        ?PWD(Dir),
+        ?_LOG("$ ", "~p  `~s`", [Timeout, string:join(Cmd, " ")])
+       ).
+
+-define(DBG(Fmt, Args),
+        io:format(user, Fmt ++ "\n", Args)
+       ).
 
 %% End of File.

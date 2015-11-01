@@ -30,7 +30,7 @@
 -spec refs (source()) -> {ok, [eo_core:rev()]} | error.
 
 refs ({git, Url, _Rev}) ->
-    case eo_os:sh("git ls-remote --heads --tags '~s'", [Url], infinity) of
+    case eo_os:sh(["git", "ls-remote", "--heads", "--tags", Url], infinity) of
         {0,R} ->
             Branches  = [#rev{commit=Commit, type=branch, id=Branch}
                          || {Commit, "refs/heads/"++Branch} <- R],
@@ -48,8 +48,7 @@ refs ({git, Url, _Rev}) ->
 
 refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
     Url = "http://"++Name++".googlecode.com/svn",
-    case eo_os:sh( "svn ls --verbose '~s/branches' '~s/tags' '~s/trunk'"
-                 , [Url,Url,Url], infinity)
+    case eo_os:sh(["svn", "ls", "--verbose", Url++"/branches", Url++"/tags", Url++"/trunk"], infinity)
     of
         {0,R} ->
             Dirs = [ begin
@@ -71,16 +70,16 @@ refs ({svn, "https://code.google.com/p/"++Name, _Rev}) ->
 
 fetch (Dir, {git, "https://github.com/"++Repo=Url, #rev{ id = Title }}) ->
     TarUrl = "https://codeload.github.com/"++ Repo ++"/tar.gz/"++ Title,
+    TarredFile = "repo.tar.gz",
     eo_os:chksh(fetch_curl, Dir,
-                "curl --fail --silent --show-error --location"
-                " --output repo.tar.gz '~s'",
-                [TarUrl], infinity),
-    AbsTarred = filename:join(Dir, "repo.tar.gz"),
+                ["curl", "--fail", "--silent", "--show-error", "--location",
+                 "--output", TarredFile, TarUrl], infinity),
+    AbsTarred = filename:join(Dir, TarredFile),
     %% Note: the tar has a root directory
     ok = erl_tar:extract(AbsTarred, [{cwd,Dir}, compressed]),
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
     case [filename:join(Dir, D) || D <- filelib:wildcard("*", Dir)
-                                       , D =/= "repo.tar.gz"
+                                       , D =/= TarredFile
                                        , filelib:is_dir(filename:join(Dir, D))]
     of
         [] -> eo_util:mkdir(AbsTitledPath);
@@ -94,10 +93,11 @@ fetch (Dir, {git, "https://github.com/"++Repo=Url, #rev{ id = Title }}) ->
 fetch (Dir, {git, "https://bitbucket.org/"++Repo=Url, #rev{ id = Branch }}) ->
     %% Note: git-archive does not accept SHA1s
     ArchUrl = "git@bitbucket.org:"++ Repo,
+    TarredFile = "repo.tar",
     eo_os:chksh('fetch_git-archive', Dir,
-                "git archive --output repo.tar --remote='~s' '~s'",
-                [ArchUrl,Branch], infinity),
-    AbsTarred = filename:join(Dir, "repo.tar"),
+                ["git", "archive", "--output", TarredFile, "--remote="++ArchUrl, Branch],
+                infinity),
+    AbsTarred = filename:join(Dir, TarredFile),
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
     %% Note: the tarball does not have a root directory
     ok = erl_tar:extract(AbsTarred, [{cwd,AbsTitledPath}]),
@@ -108,8 +108,8 @@ fetch (Dir, {git, "https://bitbucket.org/"++Repo=Url, #rev{ id = Branch }}) ->
 fetch (Dir, {git, Url, #rev{ id = Title }}) ->
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
     eo_os:chksh('fetch_git-clone', Dir,
-                "git clone --depth 1 '~s' --branch '~s' -- '~s'",
-                [Url,Title,AbsTitledPath], infinity),
+                ["git", "clone", "--depth", "1", Url, "--branch", Title, "--", AbsTitledPath],
+                infinity),
     eo_util:rmr_symlinks(AbsTitledPath),
     {ok, AbsTitledPath};
 
@@ -124,8 +124,7 @@ fetch (Dir, {svn, "https://code.google.com/p/"++Name=Url, #rev{ id = Title
         {_,tag} ->
             SvnUrl = "http://"++Name++".googlecode.com/svn/tags/"++Title
     end,
-    eo_os:chksh(fetch_svn, Dir, "svn export -r '~s' '~s'",
-                [Commit,SvnUrl], infinity),
+    eo_os:chksh(fetch_svn, Dir, ["svn", "export", "-r", Commit, SvnUrl], infinity),
     AbsExported = filename:join(Dir, hd(filelib:wildcard("*", Dir))),
     eo_util:rmr_symlinks(AbsExported),
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
