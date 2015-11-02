@@ -35,8 +35,8 @@ rmrf (Dir) ->
 rm_r (Dir) ->
     eo_os:chksh(rm_r, ["rm", "-r", Dir]).
 
-rm_r ([], _ChDir) -> ok;
-rm_r (Paths, ChDir) ->
+rm_r (_ChDir, []) -> ok;
+rm_r (ChDir, Paths) ->
     eo_os:chksh(rm_r2, ChDir, ["rm", "-r"] ++ Paths).
 
 cp (ChDir, Src, Dst) ->

@@ -37,20 +37,21 @@ gen (Conf) ->
               , {logfile, Logfile} ] ++ Conf) of
         {ok, Meta, _MetaFile} ->
             Url        = kf(Meta, url),
-            TargetPath = kf(Meta, target_path);
+            TargetPath = kf(Meta, target_path),
+            Revs       = kf(Meta, revisions);
         _Error ->
             URL0 = kf(Conf, url),
             {true,Url} = eo_scm:url(URL0),
-            TargetPath = eo_scm:repo_local_path(Url)
+            TargetPath = eo_scm:repo_local_path(Url),
+            Revs       = []
     end,
     Dest = filename:join(Odir, TargetPath),
     eo_util:mkdir(Dest),
-    ?u:mv([Logfile,metafile(Tmp)], Dest),
-    replace_dir(Dest, Tmp, Conf),
+    ?u:mv([Logfile, metafile(Tmp)], Dest),
+    replace_dir(Dest, Tmp, Conf, Revs),
     {ok, Url, Dest, "http://other.erldocs.com/"++TargetPath}.
 
 main (Conf) ->
-    inets:start(),
     try %%FIXME: is there something to catch here?
         main_(Conf)
     catch Type:Error ->
@@ -132,13 +133,15 @@ show_error (Type, Error) ->
 
 html_index (DocsRoot, Meta) ->
     Revs = kf(Meta, revisions),
-    IsTag = fun (#rev{type = tag}) -> true; (_branch) -> false end,
-    {Tags, Branches} = lists:partition(IsTag, Revs),
+    {Tags, Branches} = lists:partition(fun is_tag/1, Revs),
     "<h3 id=\"tags\">Tags</h3>"
         ++ "\n\t" ++ maybe_list_semver(DocsRoot, Tags)
         ++ "<br/>"
         ++ "\n\t<h3 id=\"branches\">Branches</h3>"
         ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>".
+
+is_tag (#rev{type = tag}) -> true;
+is_tag (_branch) -> false.
 
 list_titles (DocsRoot, Revs) ->
     case [list_rev(DocsRoot, Rev) || Rev <- Revs] of
@@ -361,30 +364,27 @@ rmdir (Dir) ->
     ok = file:del_dir(Dir).
 
 
-replace_dir (Dest, Tmp, Conf) ->
+replace_dir (Dest, Tmp, Conf, Revs) ->
     DocsRoot = filename:join(Tmp, "repo"),
     kf(Conf,base) =/= eo_default:base() andalso
         ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
                                  , "jquery.js", "erldocs.js"
                                  , ".xml" ]),
-    ToMove = list_abs(DocsRoot, "*"),
-    rm_dest_docs(Dest, ToMove),
-    ?u:mv(ToMove, Dest),
+    rm_unskipped_and_deleted(Revs, Dest),
+    ?u:mv(list_abs(DocsRoot, "*"), Dest),
     rmdir(DocsRoot),
     case file:del_dir(Tmp) of
         ok -> ok;
         {error, eexist} -> ok
     end.
 
-rm_dest_docs (Dest, Docs) ->
-    ToRm = [DestDoc || Doc <- Docs
-                           , filelib:is_dir(Doc)
-                           , begin
-                                 DestDoc = filename:join(Dest, filename:basename(Doc)),
-                                 filelib:is_dir(DestDoc)
-                             end],
-    %% Paths are absolute: no real need to tmp_cd(Dest).
-    ?u:rm_r(ToRm, Dest).
+%% @doc Remove from `Dest` titles that were not skipped
+%%   just before, and titles that do not reside in the repo anymore
+rm_unskipped_and_deleted (Revs, Dest) ->
+    Dirs = [filename:basename(Dir) || Dir <- list_abs(Dest, "*"), filelib:is_dir(Dir)],
+    ToKeep = [Rev#rev.id || Rev <- Revs, Rev#rev.builds == true],
+    ToRm = [Dir || Dir <- Dirs, not lists:member(Dir, ToKeep)],
+    ?u:rm_r(Dest, ToRm).
 
 
 make_name (RepoName, Branch, RevType) ->

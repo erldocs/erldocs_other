@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#TODO https://github.com/issues?utf8=%E2%9C%93&q=+is%3Arepo+language%3Aerlang+
+
 [[ $# -ne 1 ]] && echo "$0  ‹path to other.erldocs.com dir›" && exit 1
 osite="$1"
 outf=seed.gh

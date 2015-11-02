@@ -13,6 +13,7 @@
 %% API
 
 main ([SiteDir, TmpDir, ListFile]) ->
+    application:start(inets),
     List = read_URLs(ListFile),
     seq_gen(fabs(SiteDir), fabs(TmpDir), List, length(List));
 
