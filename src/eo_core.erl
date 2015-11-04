@@ -418,7 +418,7 @@ extract_info (UpdateOnly, Method, Url, TimeBegin) ->
     {ok, OldMeta, TBs, [ {name, eo_scm:repo_name(Url)}
                        , {target_path, TargetPath}
                        , {url, Url}
-                       , {vsn_format, 2}
+                       , {vsn_format, 3}
                        , {vsn_pass, bump_pass(OldMeta)}
                        , {time_begin, TimeBegin}
                        , {method, Method}
@@ -494,6 +494,7 @@ consult_meta (true, TargetPath) ->
                       end || Form <- Forms ],
             case lists:keyfind(vsn_format, 1, Terms) of
                 false -> [];
+                {vsn_format,2} -> bump_record_format(Terms);
                 {vsn_format,N} when N > 1 -> Terms
             end;
         _ -> []
@@ -511,6 +512,19 @@ split_after_dot ([Token={dot,_}|Rest], Acc, Forms) ->
     split_after_dot(Rest, [], [Form|Forms]);
 split_after_dot ([Token|Rest], Acc, Forms) ->
     split_after_dot(Rest, [Token|Acc], Forms).
+
+bump_record_format ([]) -> [];
+bump_record_format ([{revisions,Revs}|Terms]) ->
+    NewRevs = [#rev{ type = element(#rev.type, Rev)
+                   , id = element(#rev.id, Rev)
+                   , commit = element(#rev.commit, Rev)
+                   , builds = element(#rev.builds, Rev)
+                   , deps = element(#rev.deps, Rev)
+                   , discovered = element(#rev.discovered, Rev)
+                   } || Rev <- Revs],
+    [{revisions,NewRevs} | Terms];
+bump_record_format ([Term|Terms]) ->
+    [Term | bump_record_format(Terms)].
 
 
 to_file (Path, Data) ->

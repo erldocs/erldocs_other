@@ -8,6 +8,7 @@
              , builds      :: boolean() | undefined
              , deps = []   :: [eo_core:title()]
              , discovered = [] :: [eo_core:rev()]
+             , kvs = []    :: [tuple()]
              }).
 
 %% End of File.
