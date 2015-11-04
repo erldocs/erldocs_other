@@ -138,7 +138,7 @@ html_index (DocsRoot, Meta) ->
         ++ "\n\t" ++ maybe_list_semver(DocsRoot, Tags)
         ++ "<br/>"
         ++ "\n\t<h3 id=\"branches\">Branches</h3>"
-        ++ "\n\t<p>" ++ list_titles(DocsRoot,Branches) ++ "</p>".
+        ++ "\n\t<p>" ++ list_titles(DocsRoot, Branches) ++ "</p>".
 
 is_tag (#rev{type = tag}) -> true;
 is_tag (_branch) -> false.
@@ -146,7 +146,7 @@ is_tag (_branch) -> false.
 list_titles (DocsRoot, Revs) ->
     case [list_rev(DocsRoot, Rev) || Rev <- Revs] of
         [] -> "(none)";
-        Items  -> string:join(Items, " &nbsp; ")
+        Items -> table_titles(Items)
     end.
 
 %%FIXME: escape htmlentities (and security in path names?)
@@ -187,7 +187,7 @@ list_semver (Dir, Tags) ->
             OthersTop = length(Others0)
     end,
     SemVers = lists:sort(CmpSemVers, lists:filtermap(fun get_semver/1, Tags)),
-    tags_table(Dir, Others ++ group_by_major(SemVers, OthersTop)).
+    table_tags(Dir, Others ++ group_by_major(SemVers, OthersTop)).
 
 group_by_major ([{SemVer,Rev}|TaggedSemVers], OthersTop) ->
     group_by_major({hd(SemVer),[Rev]}, TaggedSemVers, [], 1, OthersTop).
@@ -203,11 +203,11 @@ group_by_major (Above, [{[NewMajor|_],Rev}|TaggedSemVers], Acc, Current, Top) ->
 group_by_major (Above, [], Acc, Current, Top) ->
     Max = max(Current, Top),
     lists:foldl( fun ({{Header,Lines},NLines}, Columns) ->
-                         Blanks = lists:duplicate(Max - NLines, ""),
+                         Blanks = lists:duplicate(Max - NLines, '@'),
                          [ [Header] ++ Lines ++ Blanks | Columns]
                  end , [], [{Above,Current}|Acc] ).
 
-tags_table (Dir, Columns) ->
+table_tags (Dir, Columns) ->
     [Headers0|Body0] = transpose(Columns),
     Headers = [ case Header of
                     Major when is_integer(Major) ->
@@ -215,7 +215,7 @@ tags_table (Dir, Columns) ->
                     Text -> Text
                 end || Header <- Headers0],
     Body = [[case Rev of
-                 "" -> "";
+                 '@' -> "";
                  _ -> list_rev(Dir, Rev)
              end || Rev <- Revs]
             || Revs <- Body0],
@@ -228,6 +228,28 @@ html_row (TDs) ->
     "<tr>\n"
         ++ lists:flatmap(fun (TD) -> "<td>" ++ TD ++ "</td>\n" end, TDs) ++
     "</tr>\n".
+
+table_titles (Items) ->
+    C = trunc(math:sqrt(length(Items))),
+    Cols = split_n_times(C, Items, []),
+    Body = [[case Rev of
+                 '@' -> "";
+                 _ -> Rev
+             end || Rev <- Revs]
+            || Revs <- Cols],
+    "<table>\n"
+        "<tbody>\n" ++ lists:flatmap(fun html_row/1, Body) ++ "</tbody>\n"
+    "</table>\n".
+
+split_n_times (_, [], Acc) -> Acc;
+split_n_times (N, List, Acc)
+  when length(List) >= N ->
+    {Top0,Rest} = lists:split(N, List),
+    Top = case length(Top0) of
+              N -> Top0;
+              S when S < N -> Top0 ++ lists:duplicate(N - S, '@')
+          end,
+    split_n_times(N, Rest, [Top|Acc]).
 
 %% http://erlang.org/pipermail/erlang-questions/2012-October/069856.html
 transpose ([[X|Xs] | Xss]) ->
@@ -267,16 +289,16 @@ search_files (RepoPath, Files) ->
                       discover_urls("\\s\"'();,", Contents);
                   ".gitmodules" ->
                       discover_urls("\\s=",       Contents)
-                   ++ discover_urls("\\s\"", "@", Contents);
+                   ++ discover_surr("\\s\"", "@", Contents);
                   _ ->  %% "rebar.config"++_ ->%%FIXME maybe
                       discover_urls("\\s\"",      Contents)
-                   ++ discover_urls("\\s\"", "@", Contents)
+                   ++ discover_surr("\\s\"", "@", Contents)
               end
       end, Files).
 
 discover_urls (Seps, Bin) ->
-    discover_urls (Seps, "://", Bin).
-discover_urls (Seps, Mid, Bin) ->
+    discover_surr(Seps, "://", Bin).
+discover_surr (Seps, Mid, Bin) ->
     RegExp = [ "[",Seps,"]([^", Seps, "]+", Mid, "[^", Seps, "]+)[",Seps,"]" ],
     case re:run(Bin, lists:flatten(RegExp),
                 [{capture,all_but_first,list}, global]) of
