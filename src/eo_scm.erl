@@ -124,7 +124,7 @@ fetch (Dir, {svn, "https://code.google.com/p/"++Name=Url, #rev{ id = Title
         {_,tag} ->
             SvnUrl = "http://"++Name++".googlecode.com/svn/tags/"++Title
     end,
-    eo_os:chksh(fetch_svn, Dir, ["svn", "export", "-r", Commit, SvnUrl], infinity),
+    eo_os:chksh(fetch_svn, Dir, ["svn", "export", "--force", "-r", Commit, SvnUrl], infinity),
     AbsExported = filename:join(Dir, hd(filelib:wildcard("*", Dir))),
     eo_util:rmr_symlinks(AbsExported),
     AbsTitledPath = filename:join(Dir, repo_name(Url)),
