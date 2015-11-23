@@ -8,6 +8,8 @@
 -export([new_test_tar/1]).
 
 -include("erldocs_other.hrl").
+-include("logging.hrl").
+
 -include_lib("eunit/include/eunit.hrl").
 
 %% API.
@@ -72,8 +74,7 @@ do (Url) ->
               UUID = make_name(Url),
               JailDir = filename:join("ebin", UUID),
               eo_util:mkdir(JailDir),
-              {ok, ArchExpected} = erl_tar:table(
-                                     filename:join(DataDir, UUID) ++ ".tar"),
+              ArchExpected = list_files(filename:join(DataDir, UUID) ++ ".tar"),
               GenOpts = [ {website_dir, JailDir}
                         , {dest,        JailDir}
                         , {url, Url}
@@ -81,17 +82,29 @@ do (Url) ->
                         ],
               {ok, Url, _Dest, _Link} = eo_core:gen(GenOpts),
               ArchGot = list_files(JailDir),
-              ?_assertEqual(lists:usort(ArchExpected), lists:usort(ArchGot))
+              ?DBG("Expected: ~p\n", [ArchExpected]),
+              ?DBG("Got: ~p\n", [ArchGot]),
+              ?_assertEqual(ArchExpected, ArchGot)
       end}.
 
 make_name (Url0) ->
     {true, Url} = eo_scm:url(Url0),
-    Bin = list_to_binary(eo_scm:repo_local_path(Url)),
-    binary_to_list(
-      binary:replace(Bin, <<"/">>, <<",">>, [global])).
+    [ case C of
+          $/ -> $,;
+          _ -> C
+      end || C <- eo_scm:repo_local_path(Url)].
 
-list_files (Dir) ->
-    ListInsert = fun (X, Tail) -> [X|Tail] end,
-    filelib:fold_files(Dir, ".+", true, ListInsert, []).
+list_files (Path) ->
+    lists:usort(
+      case lists:suffix(".tar", Path) of
+          true ->
+              {ok, Files} = erl_tar:table(Path),
+              Files;
+          false ->
+              filelib:fold_files(Path, ".+", true, fun put_head/2, [])
+      end).
+
+put_head (Head, Tail) ->
+    [Head | Tail].
 
 %% End of Module.

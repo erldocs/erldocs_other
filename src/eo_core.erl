@@ -9,8 +9,13 @@
 -include("logging.hrl").
 
 -export([ main/1
+        , gen/1
+
         , to_file/2
-        , gen/1 ]).
+
+        , remote_path_blacklist/0
+        , local_path_blacklist/0
+        ]).
 
 %% title/0 represents the name of either a branch or a tag
 -type title() :: string().
@@ -21,6 +26,11 @@
              ]).
 
 -define(u, eo_util).
+-define(FILE_BLACKLIST, "blacklist.txt").
+-define(FILE_LOG, "_.txt").
+-define(FILE_META, "meta.txt").
+-define(REMOTE_URL(TargetPath), "http://other.erldocs.com/" ++ TargetPath).
+-define(DOCS_ROOT, "repo").
 
 %% API
 
@@ -32,24 +42,27 @@ gen (Conf) ->
     eo_util:mkdir(Odir),
     Tmp     = kf(Conf, dest),
     eo_util:mkdir(Tmp),
-    Logfile = filename:join(Tmp, "_.txt"),
+    Logfile = filename:join(Tmp, ?FILE_LOG),
     case main([ {dest, Tmp}
-              , {logfile, Logfile} ] ++ Conf) of
+              , {logfile, Logfile}
+              ] ++ Conf)
+    of
         {ok, Meta, _MetaFile} ->
-            Url        = kf(Meta, url),
-            TargetPath = kf(Meta, target_path),
-            Revs       = kf(Meta, revisions);
+            Url        = eo_meta:url(Meta),
+            TargetPath = eo_meta:target_path(Meta),
+            Revs       = eo_meta:revisions(Meta);
         _Error ->
             URL0 = kf(Conf, url),
             {true,Url} = eo_scm:url(URL0),
             TargetPath = eo_scm:repo_local_path(Url),
             Revs       = []
     end,
+    maybe_blacklist(Odir, Url, Revs),
     Dest = filename:join(Odir, TargetPath),
     eo_util:mkdir(Dest),
     ?u:mv([Logfile, metafile(Tmp)], Dest),
     replace_dir(Dest, Tmp, Conf, Revs),
-    {ok, Url, Dest, "http://other.erldocs.com/"++TargetPath}.
+    {ok, Url, Dest, ?REMOTE_URL(TargetPath)}.
 
 main (Conf) ->
     try %%FIXME: is there something to catch here?
@@ -71,7 +84,7 @@ main_ (Conf) ->
 %    eo_util:mkdir(Dest), if nothing there, mkdir; else crash.
     TmpDir   = filename:join(Dest, RepoName),
     eo_util:mkdir(TmpDir),
-    DocsRoot = filename:join(Dest, "repo"),
+    DocsRoot = filename:join(Dest, ?DOCS_ROOT),
     eo_util:mkdir(DocsRoot),
     MetaFile = metafile(Dest),
 
@@ -106,22 +119,36 @@ do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
     ?MILESTONE("Fetching repo code"),
     {ok, TitledPath} = copy_repo(Method, Url, RepoName, Dest, Rev),
 
-    ?MILESTONE("Getting dependencies"),
-    Deps = get_deps(TitledPath),
+    ?MILESTONE("Preliminary analysis"),
+    ShouldBuild = is_repo_containing_erlang_code(TitledPath),
+    ?NOTE("analysis", "is_repo_containing_erlang_code: ~s", [ShouldBuild]),
 
-    %%FIXME `make` cloned repo (using shell's redirection & sandbox)
+    case ShouldBuild of
+        true ->
+          ?MILESTONE("Getting dependencies"),
+          Deps = get_deps(TitledPath),
 
-    %%FIXME think about rmrf TitlePath/.git/, deps/*/.git/ & submodules'.
-    Builds = erldocs(Conf, DocsRoot, Rev, TitledPath),
-    %%del_deps(TitledPath),
+          %%FIXME `make` cloned repo (using shell's redirection & sandbox)
 
-    ?MILESTONE("Discovering other repos"),
-    Discovered = repo_discovery(TitledPath),
+          %%FIXME think about rmrf TitlePath/.git/, deps/*/.git/ & submodules'.
+          Builds = erldocs(Conf, DocsRoot, Rev, TitledPath),
+          %%del_deps(TitledPath),
 
+          ?MILESTONE("Discovering other repos"),
+          Discovered = repo_discovery(TitledPath);
+
+        false ->
+            Discovered = [],
+            Deps = [],
+            Builds = false
+    end,
+
+    ?NOTE("build", "failed: ~s", [not Builds]),
     ?u:rm_r(filename:dirname(TitledPath)),
     Rev#rev{ discovered = Discovered
            , deps = Deps
            , builds = Builds
+           , kvs = ks(has_erlang_code, ShouldBuild, Rev#rev.kvs)
            }.
 
 %% Internals
@@ -131,8 +158,7 @@ show_error (Type, Error) ->
     ?MILESTONE("Error running ~p:\n\t~p\n~p", E),
     E.
 
-html_index (DocsRoot, Meta) ->
-    Revs = kf(Meta, revisions),
+html_index (DocsRoot, Revs) ->
     {Tags, Branches} = lists:partition(fun is_tag/1, Revs),
     "<h3 id=\"tags\">Tags</h3>"
         ++ "\n\t" ++ maybe_list_semver(DocsRoot, Tags)
@@ -141,7 +167,7 @@ html_index (DocsRoot, Meta) ->
         ++ "\n\t<p>" ++ list_titles(DocsRoot, Branches) ++ "</p>".
 
 is_tag (#rev{type = tag}) -> true;
-is_tag (_branch) -> false.
+is_tag (#rev{}) -> false.
 
 list_titles (DocsRoot, Revs) ->
     case [list_rev(DocsRoot, Rev) || Rev <- Revs] of
@@ -259,9 +285,9 @@ transpose ([[]|Xss]) -> transpose(Xss);
 transpose ([]) -> [].
 
 put_repo_index (Conf, DocsRoot, Meta) ->
-    Args = [ {title,   kf(Meta, target_path)}
-           , {url,     kf(Meta, url)}
-           , {content, html_index(DocsRoot, Meta)}
+    Args = [ {title,   eo_meta:target_path(Meta)}
+           , {url,     eo_meta:url(Meta)}
+           , {content, html_index(DocsRoot, eo_meta:revisions(Meta))}
            , {base,    kf(Conf, base)}
            , {ga,      kf(Conf, ga)} ],
     {ok, HTML} = html_dtl:render(Args),
@@ -335,6 +361,16 @@ list_abs (Path, Wildcard) ->
     Pattern = filename:join(Path, Wildcard),
     filelib:wildcard(Pattern).
 
+ls_al (Path) ->
+    list_abs(Path, "*").
+
+ks (Key, Value, Kvs) ->
+    case lists:keyfind(Key, 1, Kvs) of
+        false -> [{Key,Value} | Kvs];
+        _ ->
+            lists:keyreplace(Key, 1, Kvs, {Key,Value})
+    end.
+
 kf (Conf, Key) ->
     case lists:keyfind(Key, 1, Conf) of
         {Key, Value} -> Value;
@@ -355,6 +391,19 @@ copy_repo (Method, Url, RepoName, DestDir, #rev{ id = Branch
     TitledPath = filename:join([DestDir, Name]),
     eo_util:mkdir(TitledPath),
     eo_scm:fetch(TitledPath, {Method,Url,Rev}).
+
+is_repo_containing_erlang_code (#rev{kvs = Kvs}) ->
+    kf(Kvs, has_erlang_code);
+is_repo_containing_erlang_code (Path) ->
+    ExitFast = fun (_Fn, _Acc) -> throw(at_least_one) end,
+    try filelib:fold_files(Path, "\\.[ehxy]rl$", true, ExitFast, none) of
+        none -> false
+    catch
+        at_least_one -> true;
+        E:R ->
+            show_error(E, R),
+            eo_default:has_erlang_code()
+    end.
 
 get_deps (Path) ->
     case path_exists([Path, "rebar.config"]) of
@@ -383,43 +432,52 @@ path_exists (PathToJoin) ->
     filelib:is_file(Path).
 
 rmdir (Dir) ->
-    ok = file:del_dir(Dir).
+    case file:del_dir(Dir) of
+        ok -> ok;
+        {error, eexist} -> ok;
+        Error -> Error
+    end.
 
+
+maybe_blacklist (_, _, []) -> false;
+maybe_blacklist (Odir, Url, Revs) ->
+    not lists:any(fun is_repo_containing_erlang_code/1, Revs)
+        andalso blacklist_repo(Odir, Url).
+blacklist_repo (Odir, Url) ->
+    file:write_file(filename:join(Odir,?FILE_BLACKLIST), Url, [append]).
 
 replace_dir (Dest, Tmp, Conf, Revs) ->
-    DocsRoot = filename:join(Tmp, "repo"),
+    DocsRoot = filename:join(Tmp, ?DOCS_ROOT),
     kf(Conf,base) =/= eo_default:base() andalso
         ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
                                  , "jquery.js", "erldocs.js"
                                  , ".xml" ]),
     rm_unskipped_and_deleted(Revs, Dest),
-    ?u:mv(list_abs(DocsRoot, "*"), Dest),
+    ?u:mv(ls_al(DocsRoot), Dest),
     rmdir(DocsRoot),
-    case file:del_dir(Tmp) of
-        ok -> ok;
-        {error, eexist} -> ok
-    end.
+    rmdir(Tmp).
 
 %% @doc Remove from `Dest` titles that were not skipped
 %%   just before, and titles that do not reside in the repo anymore
 rm_unskipped_and_deleted (Revs, Dest) ->
-    Dirs = [filename:basename(Dir) || Dir <- list_abs(Dest, "*"), filelib:is_dir(Dir)],
+    Dirs = [filename:basename(Dir) || Dir <- ls_al(Dest), filelib:is_dir(Dir)],
     ToKeep = [Rev#rev.id || Rev <- Revs, Rev#rev.builds == true],
     ToRm = [Dir || Dir <- Dirs, not lists:member(Dir, ToKeep)],
     ?u:rm_r(Dest, ToRm).
 
 
-make_name (RepoName, Branch, RevType) ->
-    case RevType of
-        tag    -> RevKind = "tag";
-        branch -> RevKind = "branch"
-    end,
-    lists:map( fun ($/) -> $_;
-                   (C) -> C end
-             , string:join([RepoName,RevKind,Branch], "-") ).
+make_name (RepoName, Title, tag) ->
+    make_name(RepoName, Title, "tag");
+make_name (RepoName, Title, branch) ->
+    make_name(RepoName, Title, "branch");
+make_name (RepoName, Branch, RevKind) ->
+    [ case C of
+         $/ -> $_;
+         _ -> C
+      end || C <- string:join([RepoName,RevKind,Branch], "-") ].
 
 metafile (Dest) ->
-    filename:join(Dest, "meta.txt").
+    filename:join(Dest, ?FILE_META).
 
 extract_info (UpdateOnly, Method, Url, TimeBegin) ->
     case eo_scm:refs({Method, Url, '_'}) of
@@ -440,7 +498,8 @@ extract_info (UpdateOnly, Method, Url, TimeBegin) ->
     {ok, OldMeta, TBs, [ {name, eo_scm:repo_name(Url)}
                        , {target_path, TargetPath}
                        , {url, Url}
-                       , {vsn_format, 3}
+                       , {uuid, eo_scm:uuid(Url)}
+                       , {vsn_format, 4}
                        , {vsn_pass, bump_pass(OldMeta)}
                        , {time_begin, TimeBegin}
                        , {method, Method}
@@ -462,14 +521,14 @@ count (Field, Revs) ->
     lists:foldl(FieldCounter, 0, Revs).
 
 bump_pass (OldMeta) ->
-    case lists:keyfind(vsn_pass, 1, OldMeta) of
+    case eo_meta:vsn_pass(OldMeta) of
         false -> 1;
         {vsn_pass,N} -> N + 1
     end.
 
 
 select_titles (OldMeta, NewRevs) ->
-    case lists:keyfind(revisions, 1, OldMeta) of
+    case eo_meta:revisions(OldMeta) of
         false ->            OldRevs = [];
         {revisions,Revs} -> OldRevs = Revs
     end,
@@ -506,7 +565,7 @@ partition_map (Fun, List) ->
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
     application:ensure_all_started(ssl),
-    case httpc:request(remote_meta_path(TargetPath)) of
+    case httpc:request(remote_path_meta(TargetPath)) of
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
             Forms = split_after_dot(Tokens, [], []),
@@ -514,7 +573,7 @@ consult_meta (true, TargetPath) ->
                           {ok, Term} = erl_parse:parse_term(Form),
                           Term
                       end || Form <- Forms ],
-            case lists:keyfind(vsn_format, 1, Terms) of
+            case eo_meta:vsn_format(Terms) of
                 false -> [];
                 {vsn_format,2} -> bump_record_format(Terms);
                 {vsn_format,N} when N > 1 -> Terms
@@ -522,11 +581,17 @@ consult_meta (true, TargetPath) ->
         _ -> []
     end.
 
-remote_meta_path (TargetPath) ->
+remote_path_meta (TargetPath) ->
     %% "http://other.erldocs.com/"
     "https://raw.githubusercontent.com/erldocs/other.erldocs.com/gh-pages/"
-        ++ TargetPath
-        ++ "/meta.txt".
+        ++ TargetPath ++ "/" ?FILE_META.
+
+remote_path_blacklist () ->
+    "https://raw.githubusercontent.com/erldocs/other.erldocs.com/gh-pages/"
+        ?FILE_BLACKLIST.
+
+local_path_blacklist () ->
+    ?FILE_BLACKLIST.
 
 split_after_dot ([], _Acc, Forms) -> Forms;
 split_after_dot ([Token={dot,_}|Rest], Acc, Forms) ->

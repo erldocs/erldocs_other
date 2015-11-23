@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -sname oe -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/
+%%! -sname oe -Wall -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/
 %% Copyright © 2015 Pierre Fenoll ‹pierrefenoll@gmail.com›
 %% -*- coding: utf-8 -*-
 
@@ -13,22 +13,22 @@
 %% API
 
 main ([SiteDir, TmpDir, ListFile]) ->
-    application:start(inets),
-    List = read_URLs(ListFile),
-    seq_gen(fabs(SiteDir), fabs(TmpDir), List, length(List));
+    {ok,_} = application:ensure_all_started(ssl),
+    {ok,_} = application:ensure_all_started(inets),
+    BlackList = read_URLs(maybe_HTTP_fetch(eo_core:remote_path_blacklist())),
+    io:format("~p URLs blacklisted\n", [length(BlackList)]),
+    ok = put_black_list(eo_core:local_path_blacklist(), BlackList),
+    WhiteList = read_URLs(ListFile),
+    seq_gen(fabs(SiteDir), fabs(TmpDir), WhiteList, length(WhiteList), BlackList);
 
 main (_) ->
-    usage().
-
-%% Internals
-
-usage () ->
     ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
     io:format("Usage: ~s  ‹site dir› ‹tmp dir› ‹file with one URL per line›\n",
               [filename:basename(Arg0)]),
     halt(1).
 
+%% Internals
 
 fabs (Fn) ->
     filename:absname(Fn).
@@ -39,28 +39,35 @@ read_URLs (File) ->
         [Raw] -> Bins = binary:split(Raw, <<"\n">>, [global]);
         Else ->  Bins = Else
     end,
-    [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>].
+    URLs = [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>],
+    lists:filtermap(fun eo_scm:url/1, URLs).
 
-seq_gen (_SiteDir, _TmpDir, [], _) -> ok;
-seq_gen (SiteDir, TmpDir, [URL|Rest], N) ->
-    Arg = [ {website_dir, SiteDir}
-          , {dest, filename:join(TmpDir, uuid(URL))}
-          , {base, "/"}
-          , {url, URL}
-          , {update_only, true}
-          ],
-    io:format("~p ~p Arg ~10000p\n", [N,now(),Arg]),
-    Res = (catch (eo_core:gen(Arg))),
-    io:format("~p Res ~10000p\n", [N,Res]),
-    seq_gen(SiteDir, TmpDir, Rest, N-1).
-
-uuid (URL) ->
-    case eo_scm:url(URL) of
-        {true, Url} ->
-            LocalPath = eo_scm:repo_local_path(Url),
-            eo_util:uuid(crypto:hash(sha, LocalPath));
+seq_gen (_SiteDir, _TmpDir, [], _, _) -> ok;
+seq_gen (SiteDir, TmpDir, [Url|Rest], N, BlackListed) ->
+    case lists:member(Url, BlackListed) of
+        true ->
+            io:format("~p Blacklisted: ~p\n", [N,Url]);
         false ->
-            eo_util:uuid()
+            Arg = [ {website_dir, SiteDir}
+                  , {dest, filename:join(TmpDir, eo_scm:uuid(Url))}
+                  , {base, "/"}
+                  , {url, Url}
+                  , {update_only, true}
+                  ],
+            io:format("~p ~p Arg ~10000p\n", [N,now(),Arg]),
+            Res = (catch (eo_core:gen(Arg))),
+            io:format("~p Res ~10000p\n", [N,Res])
+    end,
+    seq_gen(SiteDir, TmpDir, Rest, N-1, BlackListed).
+
+maybe_HTTP_fetch (Url) ->
+    case httpc:request(get, {Url,[]}, [], [{body_format,binary}]) of
+        {ok, {_,_,Body}} -> Body;
+        _ -> <<>>
     end.
+
+put_black_list (Path, BlackListed) ->
+    Data = [[Url, $\n] || Url <- BlackListed],
+    file:write_file(Path, Data).
 
 %% End of Module.

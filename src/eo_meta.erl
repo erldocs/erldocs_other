@@ -21,6 +21,8 @@
         , time_end/1
         , count_tags/1
         , count_banches/1
+        , kvs/1
+        , uuid/1
 	]).
 
 -export_type([ t/0
@@ -70,8 +72,10 @@ iter (Fun, Continuation)
 
 -spec get(atom(), t()) -> _.
 get (Key, Meta) ->
-    {Key, Value} = lists:keyfind(Key, 1, Meta),
-    Value.
+    case lists:keyfind(Key, 1, Meta) of
+        {Key, Value} -> Value;
+        false -> false
+    end.
 
 -spec target_path(t()) -> nonempty_string().
 target_path (Meta) -> get(target_path, Meta).
@@ -95,6 +99,10 @@ time_end (Meta) -> get(time_end, Meta).
 count_tags (Meta) -> get(count_tags, Meta).
 -spec count_banches(t()) -> non_neg_integer().
 count_banches (Meta) -> get(count_banches, Meta).
+-spec kvs(t()) -> t().
+kvs (Meta) -> get(kvs, Meta).
+-spec uuid(t()) -> eo_scm:uuid().
+uuid (Meta) -> get(uuid, Meta).
 
 %% Internals
 
