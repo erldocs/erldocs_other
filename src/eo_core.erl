@@ -363,6 +363,9 @@ list_abs (Path, Wildcard) ->
 ls_al (Path) ->
     list_abs(Path, "*").
 
+ls_dirs (Path) ->
+    [filename:basename(Dir) || Dir <- ls_al(Path), filelib:is_dir(Dir)].
+
 ks (Key, Value, Kvs) ->
     case lists:keyfind(Key, 1, Kvs) of
         false -> [{Key,Value} | Kvs];
@@ -443,6 +446,7 @@ maybe_blacklist (Odir, Url, Revs) ->
     not lists:any(fun is_repo_containing_erlang_code/1, Revs)
         andalso blacklist_repo(Odir, Url).
 blacklist_repo (Odir, Url) ->
+    ?MILESTONE("Blacklisting ~p", [Url]),
     file:write_file(filename:join(Odir,?FILE_BLACKLIST), Url, [append]).
 
 replace_dir (Dest, Tmp, Conf, Revs) ->
@@ -451,17 +455,18 @@ replace_dir (Dest, Tmp, Conf, Revs) ->
         eo_util:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
                                       , "jquery.js", "erldocs.js"
                                       , ".xml" ]),
-    rm_unskipped_and_deleted(Revs, Dest),
+    rm_unskipped_and_deleted(Revs, Dest, DocsRoot),
     eo_util:mv(ls_al(DocsRoot), Dest),
     _ = rmdir(DocsRoot),
     rmdir(Tmp).
 
 %% @doc Remove from `Dest` titles that were not skipped
 %%   just before, and titles that do not reside in the repo anymore
-rm_unskipped_and_deleted (Revs, Dest) ->
-    Dirs = [filename:basename(Dir) || Dir <- ls_al(Dest), filelib:is_dir(Dir)],
-    ToKeep = [Rev#rev.id || Rev <- Revs, Rev#rev.builds == true],
-    ToRm = [Dir || Dir <- Dirs, not lists:member(Dir, ToKeep)],
+rm_unskipped_and_deleted (Revs, Dest, DocsRoot) ->
+    ODirs = ls_dirs(Dest),
+    Unskipped = ls_dirs(DocsRoot),
+    ToKeep = [Rev#rev.id || #rev{builds = true}=Rev <- Revs],
+    ToRm = (ODirs -- ToKeep) ++ Unskipped,
     eo_util:rm_r(Dest, ToRm).
 
 

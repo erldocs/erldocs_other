@@ -18,7 +18,8 @@ main ([SiteDir, TmpDir, ListFile]) ->
     BlackList = read_URLs(maybe_HTTP_fetch(eo_core:remote_path_blacklist())),
     io:format("~p URLs blacklisted\n", [length(BlackList)]),
     ok = put_black_list(eo_core:local_path_blacklist(), BlackList),
-    WhiteList = read_URLs(ListFile),
+    {ok, Raw} = file:read_file(ListFile),
+    WhiteList = read_URLs(Raw),
     seq_gen(fabs(SiteDir), fabs(TmpDir), WhiteList, length(WhiteList), BlackList);
 
 main (_) ->
@@ -36,8 +37,7 @@ usage () ->
 fabs (Fn) ->
     filename:absname(Fn).
 
-read_URLs (File) ->
-    {ok, Raw} = file:read_file(File),
+read_URLs (Raw) ->
     case binary:split(Raw, <<"\r\n">>, [global]) of
         [Raw] -> Bins = binary:split(Raw, <<"\n">>, [global]);
         Else ->  Bins = Else
