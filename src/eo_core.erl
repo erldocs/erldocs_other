@@ -25,7 +25,6 @@
              , rev/0
              ]).
 
--define(u, eo_util).
 -define(FILE_BLACKLIST, "blacklist.txt").
 -define(FILE_LOG, "_.txt").
 -define(FILE_META, "meta.txt").
@@ -57,11 +56,11 @@ gen (Conf) ->
             TargetPath = eo_scm:repo_local_path(Url),
             Revs       = []
     end,
-    maybe_blacklist(Odir, Url, Revs),
+    _ = maybe_blacklist(Odir, Url, Revs),
     Dest = filename:join(Odir, TargetPath),
     eo_util:mkdir(Dest),
-    ?u:mv([Logfile, metafile(Tmp)], Dest),
-    replace_dir(Dest, Tmp, Conf, Revs),
+    eo_util:mv([Logfile, metafile(Tmp)], Dest),
+    _ = replace_dir(Dest, Tmp, Conf, Revs),
     {ok, Url, Dest, ?REMOTE_URL(TargetPath)}.
 
 main (Conf) ->
@@ -69,12 +68,12 @@ main (Conf) ->
         main_(Conf)
     catch Type:Error ->
             E = show_error(Type, Error),
-            stop_output_redirection(),
+            _ = stop_output_redirection(),
             E
     end.
 
 main_ (Conf) ->
-    start_output_redirection(kf(Conf, logfile)),
+    _ = start_output_redirection(kf(Conf, logfile)),
     TimeBegin = utc(),
     {true,Url} = eo_scm:url(kf(Conf, url)),
     Method     = eo_scm:method(Url),
@@ -108,9 +107,9 @@ main_ (Conf) ->
                ],
     to_file(MetaFile, MetaRest, [append]),
     NewMeta = Meta ++ MetaRest,
-    ?u:rm_r(TmpDir),
-    put_repo_index(Conf, DocsRoot, NewMeta),
-    stop_output_redirection(),
+    eo_util:rm_r(TmpDir),
+    _ = put_repo_index(Conf, DocsRoot, NewMeta),
+    _ = stop_output_redirection(),
     {ok, NewMeta, MetaFile}.
 
 do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
@@ -143,8 +142,8 @@ do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
             Builds = false
     end,
 
-    ?NOTE("build", "failed: ~s", [not Builds]),
-    ?u:rm_r(filename:dirname(TitledPath)),
+    ?NOTE("erldocs_build", "succeeded: ~s", [Builds]),
+    eo_util:rm_r(filename:dirname(TitledPath)),
     Rev#rev{ discovered = Discovered
            , deps = Deps
            , builds = Builds
@@ -181,7 +180,7 @@ list_rev (_Dir, #rev{ id = Id, builds = true }) ->
 list_rev (Dir, #rev{ id = Id }) ->
     %% builds = false | undefined
     Doc = filename:join(Dir, Id),
-    filelib:is_dir(Doc) andalso ?u:rm_r(Doc),
+    filelib:is_dir(Doc) andalso eo_util:rm_r(Doc),
     Id.
 
 maybe_list_semver (Dir, Tags) ->
@@ -401,31 +400,31 @@ is_repo_containing_erlang_code (Path) ->
     catch
         at_least_one -> true;
         E:R ->
-            show_error(E, R),
+            _ = show_error(E, R),
             eo_default:has_erlang_code()
     end.
 
 get_deps (Path) ->
     case path_exists([Path, "rebar.config"]) of
-        true  -> RebarDeps = ?u:rebar_get_deps(Path);
+        true  -> RebarDeps = eo_util:rebar_get_deps(Path);
         false -> RebarDeps = []
     end,
     case path_exists([Path, ".gitmodules"]) of
-        true  -> SubModDeps = ?u:git_get_submodules(Path);
+        true  -> SubModDeps = eo_util:git_get_submodules(Path);
         false -> SubModDeps = []
     end,
     RebarDeps ++ SubModDeps.
 
 del_deps (Path) ->
     case path_exists([Path, "rebar.config"]) of
-        true  -> ?u:rebar_delete_deps(Path);
+        true  -> eo_util:rebar_delete_deps(Path);
         false -> ok
     end,
     case path_exists([Path, ".gitmodules"]) of
-        true  -> ?u:delete_submodules(Path);
+        true  -> eo_util:delete_submodules(Path);
         false -> ok
     end,
-    ?u:rmrf(filename:join(Path, "deps")).
+    eo_util:rmrf(filename:join(Path, "deps")).
 
 path_exists (PathToJoin) ->
     Path = filename:join(PathToJoin),
@@ -449,12 +448,12 @@ blacklist_repo (Odir, Url) ->
 replace_dir (Dest, Tmp, Conf, Revs) ->
     DocsRoot = filename:join(Tmp, ?DOCS_ROOT),
     kf(Conf,base) =/= eo_default:base() andalso
-        ?u:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
-                                 , "jquery.js", "erldocs.js"
-                                 , ".xml" ]),
+        eo_util:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
+                                      , "jquery.js", "erldocs.js"
+                                      , ".xml" ]),
     rm_unskipped_and_deleted(Revs, Dest),
-    ?u:mv(ls_al(DocsRoot), Dest),
-    rmdir(DocsRoot),
+    eo_util:mv(ls_al(DocsRoot), Dest),
+    _ = rmdir(DocsRoot),
     rmdir(Tmp).
 
 %% @doc Remove from `Dest` titles that were not skipped
@@ -463,7 +462,7 @@ rm_unskipped_and_deleted (Revs, Dest) ->
     Dirs = [filename:basename(Dir) || Dir <- ls_al(Dest), filelib:is_dir(Dir)],
     ToKeep = [Rev#rev.id || Rev <- Revs, Rev#rev.builds == true],
     ToRm = [Dir || Dir <- Dirs, not lists:member(Dir, ToKeep)],
-    ?u:rm_r(Dest, ToRm).
+    eo_util:rm_r(Dest, ToRm).
 
 
 make_name (RepoName, Title, tag) ->
@@ -484,7 +483,7 @@ extract_info (UpdateOnly, Method, Url, TimeBegin) ->
         {ok, TBs} -> TBs;
         error ->
             %%FIXME try another SCM?
-            case ?u:hg_test(Url) of
+            case eo_util:hg_test(Url) of
                 true  -> ?NOTE("method", "SCM is hg: not yet supported");
                 false -> ?NOTE("method", "Repo may as well not exist"), ignore_for_now
             end,
@@ -521,16 +520,18 @@ count (Field, Revs) ->
     lists:foldl(FieldCounter, 0, Revs).
 
 bump_pass (OldMeta) ->
-    case eo_meta:vsn_pass(OldMeta) of
-        false -> 1;
-        {vsn_pass,N} -> N + 1
-    end.
+    Vsn = case eo_meta:vsn_pass(OldMeta) of
+              undefined -> 0;
+              N -> N
+          end,
+    ?NOTE("vsn", "Bumping from ~p", [Vsn]),
+    Vsn + 1.
 
 
 select_titles (OldMeta, NewRevs) ->
     case eo_meta:revisions(OldMeta) of
-        false ->            OldRevs = [];
-        {revisions,Revs} -> OldRevs = Revs
+        undefined -> OldRevs = [];
+        Revs ->      OldRevs = Revs
     end,
     F = fun (NewRev) -> is_skippable(OldRevs, NewRev) end,
     {Skippable, Todo} = partition_map(F, NewRevs),
@@ -564,7 +565,6 @@ partition_map (Fun, List) ->
 
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
-    application:ensure_all_started(ssl),
     case httpc:request(remote_path_meta(TargetPath)) of
         {ok, {_,_,Body}} ->
             {ok, Tokens, _} = erl_scan:string(Body),
@@ -574,9 +574,9 @@ consult_meta (true, TargetPath) ->
                           Term
                       end || Form <- Forms ],
             case eo_meta:vsn_format(Terms) of
-                false -> [];
-                {vsn_format,2} -> bump_record_format(Terms);
-                {vsn_format,N} when N > 1 -> Terms
+                undefined -> [];
+                2 -> bump_record_format(Terms);
+                N when is_integer(N), N > 1 -> Terms
             end;
         _ -> []
     end.

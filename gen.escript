@@ -22,13 +22,16 @@ main ([SiteDir, TmpDir, ListFile]) ->
     seq_gen(fabs(SiteDir), fabs(TmpDir), WhiteList, length(WhiteList), BlackList);
 
 main (_) ->
+    usage().
+
+%% Internals
+
+usage () ->
     ok = io:setopts([{encoding, unicode}]),
     Arg0 = escript:script_name(),
     io:format("Usage: ~s  ‹site dir› ‹tmp dir› ‹file with one URL per line›\n",
               [filename:basename(Arg0)]),
     halt(1).
-
-%% Internals
 
 fabs (Fn) ->
     filename:absname(Fn).

@@ -187,7 +187,7 @@ uuid () ->
     uuid(crypto:rand_bytes(16)).
 
 %% @doc An ID unique to a repo's URL. Length: 16
--spec uuid (repo_url()) -> uuid().
+-spec uuid (repo_url() | <<_:8,_:_*8>>) -> uuid().
 uuid (Bin)
   when is_binary(Bin) ->
     lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= Bin ]);
@@ -220,6 +220,7 @@ dereference (Tag0) ->
         true  -> dereference(Tag)
     end.
 
+-spec parse_svn_ls ([{nonempty_string(), nonempty_string()}]) -> [eo_core:rev()].
 parse_svn_ls ([{_,"."}|Rest]) ->
     split_svn_ls(Rest, branch, []).
 

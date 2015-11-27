@@ -84,7 +84,8 @@ do (Url) ->
               ArchGot = list_files(JailDir),
               ?DBG("Expected: ~p\n", [ArchExpected]),
               ?DBG("Got: ~p\n", [ArchGot]),
-              ?_assertEqual(ArchExpected, ArchGot)
+              [ ?_assertEqual(length(ArchExpected), length(ArchGot))
+              , ?_assertEqual(ArchExpected, ArchGot) ]
       end}.
 
 make_name (Url0) ->
