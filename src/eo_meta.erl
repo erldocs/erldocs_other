@@ -21,6 +21,8 @@
         , time_end/1
         , count_tags/1
         , count_banches/1
+        , kvs/1
+        , uuid/1
 	]).
 
 -export_type([ t/0
@@ -31,6 +33,8 @@
 -type t() :: [{atom(),_}, ...].
 -type osite() :: file:name_all().
 -type continuation() :: pos_integer() | '$end'.
+
+-type api(A) :: A | undefined.
 
 %% API
 
@@ -47,10 +51,10 @@ fold (SiteDirectory, Fun, Acc0)
 -spec load (osite()) -> pos_integer().
 load (SiteDirectory) ->
     F = fun (Meta, Count) ->
-                {target_path, TP} = lists:keyfind(target_path, 1, Meta),
-                put(TP, Meta),
+                TargetPath = target_path(Meta),
+                put(TargetPath, Meta),
                 NewId = Count + 1,
-                put(NewId, TP),
+                put(NewId, TargetPath),
                 NewId
         end,
     Counted = fold(SiteDirectory, F, 0),
@@ -68,33 +72,39 @@ iter (Fun, Continuation)
     end.
 
 
--spec get(atom(), t()) -> _.
+-spec get(atom(), t()) -> api(_).
 get (Key, Meta) ->
-    {Key, Value} = lists:keyfind(Key, 1, Meta),
-    Value.
+    case lists:keyfind(Key, 1, Meta) of
+        {Key, Value} -> Value;
+        false -> undefined
+    end.
 
--spec target_path(t()) -> nonempty_string().
+-spec target_path(t()) -> api(nonempty_string()).
 target_path (Meta) -> get(target_path, Meta).
--spec name(t()) -> nonempty_string().
+-spec name(t()) -> api(nonempty_string()).
 name (Meta) -> get(name, Meta).
--spec url(t()) -> eo_scm:repo_url().
+-spec url(t()) -> api(eo_scm:repo_url()).
 url (Meta) -> get(url, Meta).
--spec method(t()) -> eo_scm:method().
+-spec method(t()) -> api(eo_scm:method()).
 method (Meta) -> get(method, Meta).
--spec revisions(t()) -> [eo_core:rev()].
+-spec revisions(t()) -> api([eo_core:rev()]).
 revisions (Meta) -> get(revisions, Meta).
--spec vsn_format(t()) -> pos_integer().
+-spec vsn_format(t()) -> api(pos_integer()).
 vsn_format (Meta) -> get(vsn_format, Meta).
--spec vsn_pass(t()) -> non_neg_integer().
+-spec vsn_pass(t()) -> api(non_neg_integer()).
 vsn_pass (Meta) -> get(vsn_pass, Meta).
--spec time_begin(t()) -> calendar:datetime().
+-spec time_begin(t()) -> api(calendar:datetime()).
 time_begin (Meta) -> get(time_begin, Meta).
--spec time_end(t()) -> calendar:datetime().
+-spec time_end(t()) -> api(calendar:datetime()).
 time_end (Meta) -> get(time_end, Meta).
--spec count_tags(t()) -> non_neg_integer().
+-spec count_tags(t()) -> api(non_neg_integer()).
 count_tags (Meta) -> get(count_tags, Meta).
--spec count_banches(t()) -> non_neg_integer().
+-spec count_banches(t()) -> api(non_neg_integer()).
 count_banches (Meta) -> get(count_banches, Meta).
+-spec kvs(t()) -> api(t()).
+kvs (Meta) -> get(kvs, Meta).
+-spec uuid(t()) -> api(eo_scm:uuid()).
+uuid (Meta) -> get(uuid, Meta).
 
 %% Internals
 

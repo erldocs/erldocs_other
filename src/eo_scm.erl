@@ -11,11 +11,13 @@
         , repo_local_path/1
         , method/1
         , url/1
+        , uuid/0, uuid/1
         ]).
 
 -export_type([ method/0
              , repo_url/0
              , source/0
+             , uuid/0
              ]).
 
 -include("erldocs_other.hrl").
@@ -23,6 +25,7 @@
 -type method() :: git | svn.
 -type repo_url() :: nonempty_string().
 -type source() :: {method(), repo_url(), '_' | eo_core:rev()}.
+-type uuid() :: nonempty_string().
 
 %% API
 
@@ -178,7 +181,24 @@ url (URL0) ->
             end
     end.
 
+%% @doc A UUID of length 16
+-spec uuid () -> uuid().
+uuid () ->
+    uuid(crypto:rand_bytes(16)).
+
+%% @doc An ID unique to a repo's URL. Length: 16
+-spec uuid (repo_url() | <<_:8,_:_*8>>) -> uuid().
+uuid (Bin)
+  when is_binary(Bin) ->
+    lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= Bin ]);
+uuid (Url) ->
+    uuid(crypto:hash(sha, repo_local_path(Url))).
+
 %% Internals
+
+h (X) when X < 10 -> $0 + X;
+h (X) when X < 16 -> $a + X - 10.
+
 
 find (RegExp, Subject) ->
     re:run(Subject, RegExp, [{capture,all_but_first,list}]).
@@ -200,6 +220,7 @@ dereference (Tag0) ->
         true  -> dereference(Tag)
     end.
 
+-spec parse_svn_ls ([{nonempty_string(), nonempty_string()}]) -> [eo_core:rev()].
 parse_svn_ls ([{_,"."}|Rest]) ->
     split_svn_ls(Rest, branch, []).
 

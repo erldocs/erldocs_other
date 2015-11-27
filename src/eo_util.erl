@@ -21,8 +21,6 @@
         , rebar_delete_deps/1
 
         , mkdir/1
-        , uuid/0
-        , uuid/1
         ]).
 
 -include("logging.hrl").
@@ -104,23 +102,14 @@ rebar_delete_deps (_RepoDir) -> %mind rebar hooks!!
 mkdir (Dir) ->
     ok = filelib:ensure_dir(Dir ++ "/").
 
-uuid () ->
-    uuid(crypto:rand_bytes(16)).
-uuid (Bin) ->
-    lists:flatten([ [h(B div 16), h(B rem 16)] || <<B>> <= Bin ]).
-
 %% Internals
-
-h (X) when X < 10 -> $0 + X;
-h (X) when X < 16 -> $a + X - 10.
-
 
 get_deps (RepoDir, Deps) ->
     TitledDir = filename:dirname(RepoDir),
     NewReFile = filename:join(TitledDir, "rebar_deps"),
     eo_core:to_file(NewReFile, [{deps,Deps}]),
     %% We don't want to stop if this fails
-    _ = eo_core:sh(RepoDir, ["rebar", "--config", NewReFile, "get-deps"], infinity),
+    _ = eo_os:sh(RepoDir, ["rebar", "--config", NewReFile, "get-deps"], infinity),
     rmr_symlinks(RepoDir).
 
 read_deps (RebarFile) ->
