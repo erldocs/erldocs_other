@@ -6,7 +6,6 @@
 %% eo_util: shell utilities for eo_core.
 
 -export([ rmrf/1, rm_r/1, rm_r/2
-        , cp/3
         , find_files/2
         , find_delete/2
         , rmr_symlinks/1
@@ -36,9 +35,6 @@ rm_r (Dir) ->
 rm_r (_ChDir, []) -> ok;
 rm_r (ChDir, Paths) ->
     eo_os:chksh(rm_r2, ChDir, ["rm", "-r"] ++ Paths).
-
-cp (ChDir, Src, Dst) ->
-    eo_os:chksh(cp, ChDir, "cp", ["-pr", Src, Dst]).
 
 find_files (Dir, Names) ->
     Cmd = ["find", ".", "-name"] ++ join_iolist(["-or", "-name"], Names),
