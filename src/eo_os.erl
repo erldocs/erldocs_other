@@ -51,7 +51,9 @@ chk (Name, {Code,Stdout0}) ->
 run (Dir, Cmd, Timeout) ->
     ?RUN(Dir, Cmd, Timeout),
     [Exe|Args] = Cmd,
-    Port = open_port( {spawn_executable, os:find_executable(Exe)}
+    Executable = os:find_executable(Exe),
+    false == Executable andalso ?NOTE("which", "~s not found", [Exe]),
+    Port = open_port( {spawn_executable, Executable}
                     , [ exit_status
                       , use_stdio
                       , stderr_to_stdout
