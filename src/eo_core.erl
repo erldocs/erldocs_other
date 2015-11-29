@@ -401,10 +401,7 @@ is_repo_containing_erlang_code (Path) ->
     try filelib:fold_files(Path, "\\.[ehxy]rl$", true, ExitFast, none) of
         none -> false
     catch
-        at_least_one -> true;
-        E:R ->
-            _ = show_error(E, R),
-            eo_default:has_erlang_code()
+        at_least_one -> true
     end.
 
 get_deps (Path) ->
@@ -443,11 +440,16 @@ rmdir (Dir) ->
 
 maybe_blacklist (_, _, []) -> false;
 maybe_blacklist (Odir, Url, Revs) ->
-    not lists:any(fun is_repo_containing_erlang_code/1, Revs)
+    not lists:any(fun is_rev_builds_undefined/1, Revs)
+        andalso not lists:any(fun is_repo_containing_erlang_code/1, Revs)
         andalso blacklist_repo(Odir, Url).
 blacklist_repo (Odir, Url) ->
     ?MILESTONE("Blacklisting ~p", [Url]),
-    file:write_file(filename:join(Odir,?FILE_BLACKLIST), Url, [append]).
+    Data = [eo_scm:repo_local_path(Url), $\n],
+    file:write_file(filename:join(Odir,?FILE_BLACKLIST), Data, [append]).
+
+is_rev_builds_undefined (#rev{builds = Builds}) ->
+    Builds == undefined.
 
 replace_dir (Dest, Tmp, Conf, Revs) ->
     DocsRoot = filename:join(Tmp, ?DOCS_ROOT),

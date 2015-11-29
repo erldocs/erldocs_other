@@ -17,7 +17,6 @@ main ([SiteDir, TmpDir, ListFile]) ->
     {ok,_} = application:ensure_all_started(inets),
     BlackList = read_URLs(maybe_HTTP_fetch(eo_core:remote_path_blacklist())),
     io:format("~p URLs blacklisted\n", [length(BlackList)]),
-    ok = put_black_list(eo_core:local_path_blacklist(), BlackList),
     {ok, Raw} = file:read_file(ListFile),
     WhiteList = read_URLs(Raw),
     seq_gen(fabs(SiteDir), fabs(TmpDir), WhiteList, length(WhiteList), BlackList);
@@ -68,9 +67,5 @@ maybe_HTTP_fetch (Url) ->
         {ok, {_,_,Body}} -> Body;
         _ -> <<>>
     end.
-
-put_black_list (Path, BlackListed) ->
-    Data = [[Url, $\n] || Url <- BlackListed],
-    file:write_file(Path, Data).
 
 %% End of Module.
