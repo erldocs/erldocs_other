@@ -455,7 +455,8 @@ replace_dir (Dest, Tmp, Conf, Revs) ->
         eo_util:find_delete(DocsRoot, [ "repo.css",  "erldocs.css"
                                       , "jquery.js", "erldocs.js"
                                       , ".xml" ]),
-    rm_unskipped_and_deleted(Revs, Dest, DocsRoot),
+    kf(Conf,update_only) andalso
+        rm_unskipped_and_deleted(Revs, Dest, DocsRoot),
     eo_util:mv(ls_al(DocsRoot), Dest),
     _ = rmdir(DocsRoot),
     rmdir(Tmp).
