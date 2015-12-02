@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -sname oe -Wall -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/
+%%! -sname oe -Wall -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/ -env ERL_MAX_DB_TABLES 32000
 %% Copyright © 2015 Pierre Fenoll ‹pierrefenoll@gmail.com›
 %% -*- coding: utf-8 -*-
 

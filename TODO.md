@@ -15,3 +15,4 @@
     * See most active projects
 * Count of atoms introduced
 * Calls that can be dangerous (list_to_atom/1, …)
+* Fix `Too many db tables` [maybe this way](http://erlang.org/pipermail/erlang-questions/2005-October/017419.html)
