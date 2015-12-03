@@ -341,9 +341,7 @@ erldocs (Conf, DocsRoot, #rev{id=Branch}, Path) ->
            , "--ga",   kf(Conf,ga)
            ]
         ++ list_abs(Path, "apps/*")
-        ++ list_abs(Path, "applications/*")
-        ++ lists:flatmap(fun (Dir) -> ["-I", Dir] end,
-                         find_dirs("\\.hrl$", Path)),
+        ++ list_abs(Path, "applications/*"),
     %% FIXME add non-deps containing src/
     %% ++ [ filename:dirname(Dir) || Dir <- find_dirs(".+", Path)
     %%                                   lists:suffix("/src", Dir) ],
