@@ -295,41 +295,42 @@ put_repo_index (Conf, DocsRoot, Meta) ->
     ok = file:write_file(filename:join(DocsRoot,"repo.css"), CSS).
 
 repo_discovery (RepoPath) ->
-    FilesFound =
-        filelib:wildcard("rebar.config*", RepoPath) ++
-        filelib:wildcard("deps/*/rebar.config*", RepoPath) ++
-        [ File || File <- [ "Makefile"
-                          , ".gitmodules" ],
-                  path_exists([RepoPath,File]) ],
-    UrlsFound = search_files(RepoPath, FilesFound),
+    RegExp = "\\.config"
+        "|" "\\.gitmodules"
+        "|" "[Mm]akefile",
+    FilesFound = filelib:fold_files(RepoPath, RegExp, true, fun cons/2, []),
+    UrlsFound = lists:usort(search_files(RepoPath, FilesFound)),
     lists:usort(lists:filtermap(fun eo_scm:url/1, UrlsFound)).
 
 search_files (RepoPath, Files) ->
     lists:flatmap(
       fun (File) ->
-              FilePath = filename:join(RepoPath, File),
-              {ok, Contents} = file:read_file(FilePath),
-              case File of
-                  "Makefile" ->
-                      discover_urls("\\s\"'();,", Contents);
-                  ".gitmodules" ->
-                      discover_urls("\\s=",       Contents)
-                   ++ discover_surr("\\s\"", "@", Contents);
-                  _ ->  %% "rebar.config"++_ ->%%FIXME maybe
-                      discover_urls("\\s\"",      Contents)
-                   ++ discover_surr("\\s\"", "@", Contents)
-              end
+              {ok, Contents} = file:read_file(File),
+              Discoverers =
+                    %% Makefiles
+                  [ fun (Bin) -> discover_urls("\\s\"'();,", Bin) end
+                    %% .gitmodules
+                  , fun (Bin) -> discover_urls("\\s=",       Bin) end
+                  , fun (Bin) -> discover_surr("\\s\"", "@", Bin) end
+                    %% rebar.configs
+                  , fun (Bin) -> discover_urls("\\s\"",      Bin) end
+                  , fun (Bin) -> discover_surr("\\s\"", "@", Bin) end
+                  ],
+              lists:flatmap(fun (F) -> F(Contents) end, Discoverers)
       end, Files).
 
 discover_urls (Seps, Bin) ->
     discover_surr(Seps, "://", Bin).
 discover_surr (Seps, Mid, Bin) ->
     RegExp = [ "[",Seps,"]([^", Seps, "]+", Mid, "[^", Seps, "]+)[",Seps,"]" ],
-    case re:run(Bin, lists:flatten(RegExp),
-                [{capture,all_but_first,list}, global]) of
+    Options = [{capture,all_but_first,list}, global],
+    case re:run(Bin, lists:flatten(RegExp), Options) of
         {match, Urls} -> lists:append(Urls);
         nomatch -> []
     end.
+
+cons (Head, Tail) ->
+    [Head | Tail].
 
 erldocs (Conf, DocsRoot, #rev{id=Branch}, Path) ->
     DocsDest = filename:join(DocsRoot, Branch),
@@ -348,11 +349,8 @@ erldocs (Conf, DocsRoot, #rev{id=Branch}, Path) ->
     erldocs:main(Args).
 
 find_dirs (FilePattern, Path) ->
-    AccDirs = fun (File, Acc) ->
-                      [filename:dirname(File)|Acc]
-              end,
-    Dirs = filelib:fold_files(Path, FilePattern, true, AccDirs, []),
-    lists:usort(Dirs).
+    Paths = filelib:fold_files(Path, FilePattern, true, fun cons/2, []),
+    lists:usort([filename:dirname(File) || File <- Paths]).
 
 list_abs (Path, Wildcard) ->
     Pattern = filename:join(Path, Wildcard),
