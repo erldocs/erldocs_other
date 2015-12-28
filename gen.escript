@@ -60,6 +60,7 @@ seq_gen (SiteDir, TmpDir, [Url|Rest], N, BlackListed) ->
             Res = (catch (eo_core:gen(Arg))),
             io:format("~p Res ~10000p\n", [N,Res])
     end,
+    _ = erldocs_core:maybe_delete_xmerl_table(),
     seq_gen(SiteDir, TmpDir, Rest, N-1, BlackListed).
 
 maybe_HTTP_fetch (Url) ->
