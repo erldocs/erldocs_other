@@ -1,6 +1,6 @@
 #erldocs_other • [GitHub](//github.com/erldocs/erldocs_other)
 
-[![Build Status](//travis-ci.org/erldocs/erldocs_other.svg?branch=master)](//travis-ci.org/erldocs/erldocs_other)
+[![Build Status](https://api.travis-ci.org/erldocs/erldocs_other.svg?branch=master)](https://travis-ci.org/erldocs/erldocs_other)
 
 ## Requirements
 * Git ≥ 1.7.4.4
