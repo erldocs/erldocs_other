@@ -18,7 +18,7 @@ blockquote:before, blockquote:after, q:before, q:after { content:''; content:non
     font-family: 'Roboto';
     font-style: normal;
     font-weight: 400;
-    src: local('Roboto Condensed Regular'), local('RobotoCondensed-Regular'), url(http://fonts.gstatic.com/s/robotocondensed/v10/Zd2E9abXLFGSr9G3YK2MsFzqCfRpIA3W6ypxnPISCPA.woff) format('woff');
+    src: local('Roboto Condensed Regular'), local('RobotoCondensed-Regular'), url(//fonts.gstatic.com/s/robotocondensed/v10/Zd2E9abXLFGSr9G3YK2MsFzqCfRpIA3W6ypxnPISCPA.woff) format('woff');
 }
 
 body { font-family:Roboto; font-size:14px; line-height:150%; }

@@ -386,7 +386,7 @@ copy_repo (Method, Url, RepoName, DestDir, #rev{ id = Branch
                                                , type = RevType
                                                } = Rev) ->
     Name = make_name(RepoName, Branch, RevType),
-    TitledPath = filename:join([DestDir, Name]),
+    TitledPath = filename:join(DestDir, Name),
     eo_util:mkdir(TitledPath),
     eo_scm:fetch(TitledPath, {Method,Url,Rev}).
 
