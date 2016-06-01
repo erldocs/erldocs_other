@@ -310,11 +310,10 @@ search_files (RepoPath, Files) ->
                     %% Makefiles
                   [ fun (Bin) -> discover_urls("\\s\"'();,", Bin) end
                     %% .gitmodules
-                  , fun (Bin) -> discover_urls("\\s=",       Bin) end
+                  , fun (Bin) -> discover_urls("\\s\"=",     Bin) end
                   , fun (Bin) -> discover_surr("\\s\"", "@", Bin) end
                     %% rebar.configs
                   , fun (Bin) -> discover_urls("\\s\"",      Bin) end
-                  , fun (Bin) -> discover_surr("\\s\"", "@", Bin) end
                   ],
               lists:flatmap(fun (F) -> F(Contents) end, Discoverers)
       end, Files).
