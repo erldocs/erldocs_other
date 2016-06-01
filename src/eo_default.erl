@@ -9,7 +9,7 @@
         , logfile/0
         , ga/0
         , update_only/0
-        , has_erlang_code/0
+        , has_erlang_file/0
         ]).
 
 
@@ -27,7 +27,7 @@ ga () ->
 update_only () ->
     true.
 
-has_erlang_code () ->
+has_erlang_file () ->
     false.
 
 %% Internals

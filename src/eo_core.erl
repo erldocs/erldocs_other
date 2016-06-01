@@ -119,8 +119,8 @@ do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
     {ok, TitledPath} = copy_repo(Method, Url, RepoName, Dest, Rev),
 
     ?MILESTONE("Preliminary analysis"),
-    ShouldBuild = is_repo_containing_erlang_code(TitledPath),
-    ?NOTE("analysis", "is_repo_containing_erlang_code: ~s", [ShouldBuild]),
+    ShouldBuild = is_repo_containing_erlang_file(TitledPath),
+    ?NOTE("analysis", "is_repo_containing_erlang_file: ~s", [ShouldBuild]),
 
     case ShouldBuild of
         true ->
@@ -147,7 +147,7 @@ do (Rev, Method, Url, RepoName, Conf, DocsRoot, Dest) ->
     Rev#rev{ discovered = Discovered
            , deps = Deps
            , builds = Builds
-           , kvs = ks(has_erlang_code, ShouldBuild, Rev#rev.kvs)
+           , kvs = ks(has_erlang_file, ShouldBuild, Rev#rev.kvs)
            }.
 
 %% Internals
@@ -390,9 +390,9 @@ copy_repo (Method, Url, RepoName, DestDir, #rev{ id = Branch
     eo_util:mkdir(TitledPath),
     eo_scm:fetch(TitledPath, {Method,Url,Rev}).
 
-is_repo_containing_erlang_code (#rev{kvs = Kvs}) ->
-    kf(Kvs, has_erlang_code);
-is_repo_containing_erlang_code (Path) ->
+is_repo_containing_erlang_file (#rev{kvs = Kvs}) ->
+    kf(Kvs, has_erlang_file);
+is_repo_containing_erlang_file (Path) ->
     ExitFast = fun (_Fn, _Acc) -> throw(at_least_one) end,
     try filelib:fold_files(Path, "\\.[ehxy]rl$", true, ExitFast, none) of
         none -> false
@@ -437,7 +437,7 @@ rmdir (Dir) ->
 maybe_blacklist (_, _, []) -> false;
 maybe_blacklist (Odir, Url, Revs) ->
     not lists:any(fun is_rev_builds_undefined/1, Revs)
-        andalso not lists:any(fun is_repo_containing_erlang_code/1, Revs)
+        andalso not lists:any(fun is_repo_containing_erlang_file/1, Revs)
         andalso blacklist_repo(Odir, Url).
 blacklist_repo (Odir, Url) ->
     ?MILESTONE("Blacklisting ~p", [Url]),
