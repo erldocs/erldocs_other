@@ -15,7 +15,9 @@ pushd $osite
 # git pull origin gh-pages
 
 #find ./*/ -name meta.txt | cut -c3- | sed 's/.........$//' >$urls
+#pushd $code
 #./meta_discover.escript $osite | \grep -vF ' -> ' | sed 's%https://%%' >>$urls
+#popd
 #[[ ! -f $seeds ]] && touch $seeds
 #sort -u $seeds $urls >$tmp_urls
 #mv $tmp_urls $urls

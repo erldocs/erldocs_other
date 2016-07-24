@@ -3,3 +3,4 @@ ebin
 
 erl.mk
 erldocs_other
+seeds
