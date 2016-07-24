@@ -1,12 +1,10 @@
 #!/bin/bash
 
-[[ $# -ne 1 ]] && echo "$0  ‹path to other.erldocs.com dir›" && exit 1
-osite="$1"
 outf=seed.ec
 
 # Extract URLs of Erlang projects to serve as seed.
 
-source we.sh
+source function.we.sh
 
 root='https://erlangcentral.org/erlang-projects'
 
@@ -18,7 +16,6 @@ function REST() {
 function find() {
     for url in $(we -O - "$(REST $*)" | grep -P '"[^\s][^"]+"\s+target=[^,]+$' | cut -d '"' -f 4); do
 	proj=$(echo $url | sed 's%https://%%;s%http://%%' | tr '[:upper:]' '[:lower:]')
-	[[ -f $osite/$proj/meta.txt ]] && continue
 	echo $proj
 	echo $proj >>$outf
     done

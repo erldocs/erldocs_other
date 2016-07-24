@@ -2,13 +2,11 @@
 
 #TODO https://github.com/issues?utf8=%E2%9C%93&q=+is%3Arepo+language%3Aerlang+
 
-[[ $# -ne 1 ]] && echo "$0  ‹path to other.erldocs.com dir›" && exit 1
-osite="$1"
 outf=seed.gh
 
 # Extract URLs of Erlang projects to serve as seed.
 
-source we.sh
+source function.we.sh
 
 function REST() {
     local p=$1 # 1..100
@@ -20,7 +18,6 @@ function REST() {
 function find() {
     for found in $(we -O - "$(REST $*)" | grep -Eoa '<a href="/([^"]+)">\1</a>' | cut -d '"' -f 2 | tr '[:upper:]' '[:lower:]'); do
         proj=github.com$found
-        [[ -f $osite/$proj/meta.txt ]] && continue
         echo $proj
         echo $proj >>$outf
     done
