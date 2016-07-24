@@ -274,7 +274,9 @@ split_n_times (N, List, Acc)
               N -> Top0;
               S when S < N -> Top0 ++ lists:duplicate(N - S, '@')
           end,
-    split_n_times(N, Rest, [Top|Acc]).
+    split_n_times(N, Rest, [Top|Acc]);
+split_n_times (_, Rest, Acc) ->
+    Acc ++ [Rest].
 
 %% http://erlang.org/pipermail/erlang-questions/2012-October/069856.html
 transpose ([[X|Xs] | Xss]) ->
