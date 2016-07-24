@@ -1,6 +1,6 @@
 #!/bin/bash -ex
 
-. $HOME/.bin/builds/otp/19.0/activate
+. $HOME/.bin/builds/otp/18.3/activate
 
 osite=~/www/dev.erldocs.com
 wef=~/wefwefwef/docs
