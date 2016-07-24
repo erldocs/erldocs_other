@@ -1,14 +1,12 @@
 #!/usr/bin/env escript
-%%! -sname oe -Wall -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/
-%% Copyright © 2015 Pierre Fenoll ‹pierrefenoll@gmail.com›
+%%! -Wall -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/
 %% -*- coding: utf-8 -*-
+%% Copyright © 2015 Pierre Fenoll ‹pierrefenoll@gmail.com›
 
 %% gen.escript: gen.sh script revisited for performance
-%% ./$0 ‹…›  2>&1 | tee ~/log
+%% ./$0 ‹…›  2>&1 | tee ./log
 
 -mode(compile).
-
--define(PAR_MAX, 3).
 
 %% API
 
@@ -17,9 +15,14 @@ main ([SiteDir, TmpDir, ListFile]) ->
     {ok,_} = application:ensure_all_started(inets),
     BlackList = read_URLs(maybe_HTTP_fetch(eo_core:remote_path_blacklist())),
     io:format("~p URLs blacklisted\n", [length(BlackList)]),
-    {ok, Raw} = file:read_file(ListFile),
-    WhiteList = read_URLs(Raw),
-    seq_gen(fabs(SiteDir), fabs(TmpDir), WhiteList, length(WhiteList), BlackList);
+    URLs = case filelib:is_regular(ListFile) of
+               false -> %% Not a file: maybe it's a URL then?
+                   [ListFile];
+               true ->
+                   {ok, Raw} = file:read_file(ListFile),
+                   read_URLs(Raw)
+           end,
+    seq_gen(fabs(SiteDir), fabs(TmpDir), URLs, length(URLs), BlackList);
 
 main (_) ->
     usage().

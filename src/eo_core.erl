@@ -302,7 +302,7 @@ repo_discovery (RepoPath) ->
     UrlsFound = lists:usort(search_files(RepoPath, FilesFound)),
     lists:usort(lists:filtermap(fun eo_scm:url/1, UrlsFound)).
 
-search_files (RepoPath, Files) ->
+search_files (_RepoPath, Files) ->
     lists:flatmap(
       fun (File) ->
               {ok, Contents} = file:read_file(File),
@@ -585,12 +585,11 @@ consult_meta (true, TargetPath) ->
     end.
 
 remote_path_meta (TargetPath) ->
-    %% "http://other.erldocs.com/"
-    "https://raw.githubusercontent.com/erldocs/other.erldocs.com/gh-pages/"
+    "https://dev.erldocs.com/"
         ++ TargetPath ++ "/" ?FILE_META.
 
 remote_path_blacklist () ->
-    "https://raw.githubusercontent.com/erldocs/other.erldocs.com/gh-pages/"
+    "https://dev.erldocs.com/"
         ?FILE_BLACKLIST.
 
 local_path_blacklist () ->
