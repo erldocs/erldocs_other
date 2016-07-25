@@ -24,7 +24,7 @@ pushd $osite
 
 pushd $code
 #./gen.escript $osite $wef/other/ $urls 2>&1 | tee --append $wef/gen_log
-cat $urls | xargs -P $NPROCS -n 1 -t -- ./gen.escript $osite $wef/other/
+xargs -a $urls -P $NPROCS -n 1 -t -- ./gen.escript $osite $wef/other/
 # ./pu.sh ~/wefwefwef/docs/osite.git/ 'daily update'
 popd
 
