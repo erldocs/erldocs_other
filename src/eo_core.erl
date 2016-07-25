@@ -467,7 +467,7 @@ rm_unskipped_and_deleted (Revs, Dest, DocsRoot) ->
     Unskipped = ls_dirs(DocsRoot),
     ToKeep = [Rev#rev.id || #rev{builds = true}=Rev <- Revs],
     ToRm = (ODirs -- ToKeep) ++ Unskipped,
-    eo_util:rm_r(Dest, ToRm).
+    catch eo_util:rm_r(Dest, ToRm).
 
 
 make_name (RepoName, Title, tag) ->
