@@ -11,18 +11,19 @@
 %% API
 
 main ([SiteDir, TmpDir, ListFile]) ->
-    {ok,_} = application:ensure_all_started(ssl),
-    {ok,_} = application:ensure_all_started(inets),
-    BlackList = read_URLs(maybe_HTTP_fetch(eo_core:remote_path_blacklist())),
-    io:format("~p URLs blacklisted\n", [length(BlackList)]),
-    URLs = case filelib:is_regular(ListFile) of
-               false -> %% Not a file: maybe it's a URL then?
-                   [ListFile];
+    URLs = case filelib:is_regular(ListFile)
+               orelse eo_scm:url(ListFile)
+           of
                true ->
                    {ok, Raw} = file:read_file(ListFile),
-                   read_URLs(Raw)
+                   read_URLs(Raw);
+               {true, URL} -> %% Not a file: maybe it's a URL then?
+                   [URL];
+               false ->
+                   io:format("Bad input '~s', skipping\n", [ListFile]),
+                   []
            end,
-    seq_gen(fabs(SiteDir), fabs(TmpDir), URLs, length(URLs), BlackList);
+    seq_gen(fabs(SiteDir), fabs(TmpDir), URLs, length(URLs));
 
 main (_) ->
     usage().
@@ -47,6 +48,14 @@ read_URLs (Raw) ->
     URLs = [binary_to_list(Bin) || Bin <- Bins, Bin =/= <<>>],
     lists:filtermap(fun eo_scm:url/1, URLs).
 
+seq_gen (_SiteDir, _TmpDir, [], _) -> ok;
+seq_gen (SiteDir, TmpDir, URLs, N) ->
+    {ok,_} = application:ensure_all_started(ssl),
+    {ok,_} = application:ensure_all_started(inets),
+    BlackList = read_URLs(maybe_HTTP_fetch(SiteDir, eo_core:remote_path_blacklist())),
+    io:format("~p URLs blacklisted\n", [length(BlackList)]),
+    seq_gen(SiteDir, TmpDir, URLs, N, BlackList).
+
 seq_gen (_SiteDir, _TmpDir, [], _, _) -> ok;
 seq_gen (SiteDir, TmpDir, [Url|Rest], N, BlackListed) ->
     case lists:member(Url, BlackListed) of
@@ -66,10 +75,15 @@ seq_gen (SiteDir, TmpDir, [Url|Rest], N, BlackListed) ->
     _ = erldocs_core:maybe_delete_xmerl_table(),
     seq_gen(SiteDir, TmpDir, Rest, N-1, BlackListed).
 
-maybe_HTTP_fetch (Url) ->
-    case httpc:request(get, {Url,[]}, [], [{body_format,binary}]) of
-        {ok, {_,_,Body}} -> Body;
-        _ -> <<>>
+maybe_HTTP_fetch (SiteDir, Url) ->
+    case file:read_file(filename:join(SiteDir, "blacklist.txt")) of
+        {ok, Bin} -> Bin;
+        {error, _R} ->
+            io:format("no local blacklist: ~p\n", [_R]),
+            case httpc:request(get, {Url,[]}, [], [{body_format,binary}]) of
+                {ok, {_,_,Body}} -> Body;
+                _ -> <<>>
+            end
     end.
 
 %% End of Module.
