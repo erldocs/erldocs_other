@@ -168,17 +168,17 @@ method ("https://code.google.com/p/"++_) -> svn.
 %%   Note: lists:filtermap/2-ready output.
 -spec url (string()) -> {true, repo_url()} | false.
 
-url (URL0) ->
-    Url = string:to_lower(URL0),
-    case find("(github\\.com|bitbucket\\.org)[:/]([^:/]+)/([^/]+)", Url) of
-        {match, [Site,User,Name]} ->
-            {true, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)};
-        nomatch ->
-            case find("code\\.google\\.com/p/([^/]+)", Url) of
-                {match, [Name]} ->
-                    {true, "https://code.google.com/p/"++Name};
-                nomatch -> false
-            end
+url (URL) ->
+    Extractors = [fun url_gitbucket/1
+                 ,fun url_googlecode/1
+                 ],
+    case lists:foldl(fun url_foldl/2, string:to_lower(URL), Extractors) of
+        {true, URI}=Ok ->
+            case re:run(URI, "[^a-z0-9:/._-]") of
+                nomatch -> Ok;
+                _ -> false
+            end;
+        _ -> false
     end.
 
 %% @doc A UUID of length 16
@@ -199,6 +199,27 @@ uuid (Url) ->
 h (X) when X < 10 -> $0 + X;
 h (X) when X < 16 -> $a + X - 10.
 
+
+url_foldl (_, {true,_}=Ok) -> Ok;
+url_foldl (F, RawURL) ->
+    case F(RawURL) of
+        false -> RawURL;
+        Else -> Else
+    end.
+
+url_gitbucket (URL) ->
+    case find("(github\\.com|bitbucket\\.org)[:/]([^:/]+)/([^/]+)", URL) of
+        nomatch -> false;
+        {match, [Site,User,Name]} ->
+            {true, "https://"++Site++"/"++User++"/"++trim_dotgit(Name)}
+    end.
+
+url_googlecode (URL) ->
+    case find("code\\.google\\.com/p/([^/]+)", URL) of
+        nomatch -> false;
+        {match, [Name]} ->
+            {true, "https://code.google.com/p/"++Name}
+    end.
 
 find (RegExp, Subject) ->
     re:run(Subject, RegExp, [{capture,all_but_first,list}]).
