@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 . $HOME/.bin/builds/otp/18.3/activate
 
