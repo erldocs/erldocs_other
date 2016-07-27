@@ -59,7 +59,7 @@ seq_gen (SiteDir, TmpDir, [Url|Rest], N, BlackListed) ->
                   , {url, Url}
                   , {update_only, true}
                   ],
-            io:format("~p ~p Arg ~10000p\n", [N,now(),Arg]),
+            io:format("~p ~p Arg ~10000p\n", [N,erlang:timestamp(),Arg]),
             Res = (catch (eo_core:gen(Arg))),
             io:format("~p Res ~10000p\n", [N,Res])
     end,
