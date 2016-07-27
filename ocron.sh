@@ -28,5 +28,10 @@ xargs -a $urls -P $NPROCS -n 1 -t -- ./gen.escript $osite $wef/other/
 # ./pu.sh ~/wefwefwef/docs/osite.git/ 'daily update'
 popd
 
+apps=apps.js
+echo 'apps = [' >$apps
+find . -name meta.txt | cut -c3- | sed 's/.........$/",/' | sed 's/^/"/' | tr -d '\n' >>$apps
+echo '];' >>$apps
+
 popd
 echo DONE
