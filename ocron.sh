@@ -6,6 +6,7 @@ osite=~/www/dev.erldocs.com
 wef=~/wefwefwef/docs
 code=$wef/erldocs_other.git
 urls=$wef/gen
+urls_log=${urls}.log
 tmp_urls=$RANDOM
 seeds=$code/seeds
 NPROCS=7
@@ -23,8 +24,9 @@ pushd $osite
 #mv $tmp_urls $urls
 
 pushd $code
+echo >$urls_log
 #./gen.escript $osite $wef/other/ $urls 2>&1 | tee --append $wef/gen_log
-xargs -a $urls -P $NPROCS -n 1 -t -- ./gen.escript $osite $wef/other/
+xargs -a $urls -P $NPROCS -n 1 -t -- ./gen.escript $osite $wef/other/ >>$urls_log
 # ./pu.sh ~/wefwefwef/docs/osite.git/ 'daily update'
 popd
 
