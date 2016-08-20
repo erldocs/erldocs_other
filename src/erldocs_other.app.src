@@ -1,17 +1,8 @@
 {application
 , erldocs_other
 , [ {description, "Generate HTML code for other.erldocs.com"}
-  , {vsn, "1"}
-  , {modules, [ erldocs_other
-              , eo_core
-              , eo_default
-              , eo_meta
-              , eo_os
-              , eo_scm
-              , eo_util
-              , eo_vsn
-              , iolists
-              ]}
+  , {vsn, "0.9.5"}
+  , {modules, []}
   , {registered, []}
   , {applications, [ kernel
                    , stdlib
