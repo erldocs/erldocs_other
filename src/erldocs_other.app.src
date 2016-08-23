@@ -1,14 +1,18 @@
 {application
-, erldocs_other
-, [ {description, "Generate HTML code for other.erldocs.com"}
-  , {vsn, "0.9.5"}
-  , {modules, []}
-  , {registered, []}
-  , {applications, [ kernel
-                   , stdlib
-                   , ssl
-                   , inets
-                   ]}
-  , {env, []}
-  ]
+,erldocs_other
+,[{description, "Generate HTML code for other.erldocs.com"}
+ ,{vsn, "0.9.6"}
+ ,{modules, []}
+ ,{registered, []}
+ ,{applications, [kernel
+                 ,stdlib
+                 ,ssl
+                 ,inets
+                 ]}
+ ,{env, []}
+ ,{maintainers, ["Pierre Fenoll"]}
+ ,{licenses, ["MIT"]}
+ ,{links, [{"Github", "https://github.com/erldocs/erldocs_other"}
+          ]}
+ ]
 }.
