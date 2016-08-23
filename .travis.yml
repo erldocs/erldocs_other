@@ -1,16 +1,13 @@
+sudo: false
 language: erlang
 otp_release:
   - 19.0
   - 18.3
 
-sudo: false
-
-before_script:
+install:
   - set -e
   - wget https://s3.amazonaws.com/rebar3/rebar3
   - chmod +x ./rebar3
 
-script:
-  - ./rebar3 compile
-
+script: REBAR3=./rebar3 make
 after_success: REBAR3=./rebar3 make test

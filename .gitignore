@@ -1,7 +1,3 @@
-deps
-ebin
-
-erl.mk
 erldocs_other
 seeds
 _build
