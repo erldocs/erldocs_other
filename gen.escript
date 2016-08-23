@@ -1,5 +1,5 @@
 #!/usr/bin/env escript
-%%! -Wall -pz ebin/ -pz deps/erldocs/ebin/ -pz deps/erlydtl/ebin/ -pz deps/eunit_formatters/ebin/ -pz deps/merl/ebin/
+%%! -Wall -pz _build/default/lib/erldocs_other/ebin/ -pz _build/default/lib/erldocs/ebin/ -pz _build/default/lib/erlydtl/ebin/
 %% -*- coding: utf-8 -*-
 %% Copyright © 2015 Pierre Fenoll ‹pierrefenoll@gmail.com›
 
