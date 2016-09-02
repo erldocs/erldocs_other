@@ -395,7 +395,7 @@ is_repo_containing_erlang_file (#rev{kvs = Kvs}) ->
     kf(Kvs, has_erlang_file);
 is_repo_containing_erlang_file (Path) ->
     ExitFast = fun (_Fn, _Acc) -> throw(at_least_one) end,
-    try filelib:fold_files(Path, "\\.[ehxy]rl$", true, ExitFast, none) of
+    try filelib:fold_files(Path, "\\.([ehxy]rl|escript|app\\.src)$", true, ExitFast, none) of
         none -> false
     catch
         at_least_one -> true
