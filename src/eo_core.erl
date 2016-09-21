@@ -25,10 +25,11 @@
              , rev/0
              ]).
 
+-define(REMOTE_ROOT, "https://dev.erldocs.com/").
 -define(FILE_BLACKLIST, "blacklist.txt").
 -define(FILE_LOG, "_.txt").
 -define(FILE_META, "meta.txt").
--define(REMOTE_URL(TargetPath), "http://other.erldocs.com/" ++ TargetPath).
+-define(REMOTE_URL(TargetPath), ?REMOTE_ROOT ++ TargetPath).
 -define(DOCS_ROOT, "repo").
 
 %% API
@@ -99,11 +100,11 @@ main_ (Conf) ->
            catch
                Type:Error ->
                    _ = show_error(Type, Error),
-                   TB#rev{ builds = undefined }
+                   TB#rev{builds = undefined}
            end || TB <- ToDo] ++ Skippable,
     ?MILESTONE("Finishing up"),
-    MetaRest = [ {revisions, lists:sort(TBs)}
-               , {time_end, utc()}
+    MetaRest = [{revisions, lists:sort(TBs)}
+               ,{time_end, utc()}
                ],
     to_file(MetaFile, MetaRest, [append]),
     NewMeta = Meta ++ MetaRest,
@@ -542,35 +543,46 @@ select_titles (OldMeta, NewRevs) ->
         undefined -> OldRevs = [];
         Revs ->      OldRevs = Revs
     end,
-    F = fun (NewRev) -> is_skippable(OldRevs, NewRev) end,
+    F = fun (NewRev) -> is_skippable(OldRevs, NewRev, OldMeta) end,
     {Skippable, Todo} = partition_map(F, NewRevs),
     %% Note: deleted revs are lost
     {ok, Todo, Skippable}.
 
-is_skippable ([], _NewRev) -> false;
+is_skippable ([], _NewRev, _OldMeta) -> false;
 is_skippable ([#rev{ type = Type, id = Id} = OldRev | _Rest]
-             , #rev{ type = Type, id = Id} = NewRev) ->
+             , #rev{ type = Type, id = Id} = NewRev
+             , OldMeta
+             ) ->
     case OldRev#rev.commit =/= NewRev#rev.commit
         orelse OldRev#rev.builds == undefined
+        orelse not remote_docs_exist(Id, OldMeta)
     of
         true -> false;
         false ->
             ?MILESTONE("Skipping ~s ~p", [NewRev#rev.type, NewRev#rev.id]),
             {true, OldRev}
     end;
-is_skippable ([_OldRev|Rest], NewRev) ->
-    is_skippable(Rest, NewRev).
+is_skippable ([_OldRev|Rest], NewRev, OldMeta) ->
+    is_skippable(Rest, NewRev, OldMeta).
+
+remote_docs_exist (Title, Meta) ->
+    case httpc:request(remote_path_docs(Title, Meta)) of
+        {ok, {{_,200,_},_,_}} -> true;
+        _ -> false
+    end.
 
 -spec partition_map (fun((A) -> boolean()|{true,B}), [A]) -> {[A|B], [A]}.
 partition_map (Fun, List) ->
-    lists:foldl( fun (Elt, {Satisfying,NotSatisfying}) ->
-                         case Fun(Elt) of
-                             %% true ->    {[Elt|Satisfying], NotSatisfying};
-                             false ->      {Satisfying,  [Elt|NotSatisfying]};
-                             {true,Val} -> {[Val|Satisfying], NotSatisfying}
-                         end
-                 end
-               , {[],[]}, List).
+    lists:foldl(fun (Elt, {Satisfying,NotSatisfying}) ->
+                        case Fun(Elt) of
+                            %% true ->    {[Elt|Satisfying], NotSatisfying};
+                            false ->      {Satisfying,  [Elt|NotSatisfying]};
+                            {true,Val} -> {[Val|Satisfying], NotSatisfying}
+                        end
+                end
+               ,{[], []}
+               ,List
+               ).
 
 consult_meta (false, _TargetPath) -> [];
 consult_meta (true, TargetPath) ->
@@ -590,13 +602,14 @@ consult_meta (true, TargetPath) ->
         _ -> []
     end.
 
+remote_path_docs (Title, Meta) ->
+    ?REMOTE_ROOT ++ eo_meta:target_path(Meta) ++ "/" ++ Title ++ "/".
+
 remote_path_meta (TargetPath) ->
-    "https://dev.erldocs.com/"
-        ++ TargetPath ++ "/" ?FILE_META.
+    ?REMOTE_ROOT ++ TargetPath ++ "/" ?FILE_META.
 
 remote_path_blacklist () ->
-    "https://dev.erldocs.com/"
-        ?FILE_BLACKLIST.
+    ?REMOTE_ROOT ++ ?FILE_BLACKLIST.
 
 local_path_blacklist () ->
     ?FILE_BLACKLIST.

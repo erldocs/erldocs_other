@@ -62,11 +62,11 @@ seq_gen (SiteDir, TmpDir, [Url|Rest], N, BlackListed) ->
         true ->
             io:format("~p Blacklisted: ~p\n", [N,Url]);
         false ->
-            Arg = [ {website_dir, SiteDir}
-                  , {dest, filename:join(TmpDir, eo_scm:uuid(Url))}
-                  , {base, "/"}
-                  , {url, Url}
-                  , {update_only, true}
+            Arg = [{website_dir, SiteDir}
+                  ,{dest, filename:join(TmpDir, eo_scm:uuid(Url))}
+                  ,{base, "/"}
+                  ,{url, Url}
+                  ,{update_only, true}
                   ],
             io:format("~p ~p Arg ~10000p\n", [N,erlang:timestamp(),Arg]),
             Res = (catch (eo_core:gen(Arg))),
