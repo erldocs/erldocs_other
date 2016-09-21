@@ -1,0 +1,12 @@
+{name,"lager"}.
+{target_path,"github.com/inaka/lager"}.
+{url,"https://github.com/inaka/lager"}.
+{uuid,"9b04dc2cb019a21b35b34da68718a05f879ff238"}.
+{vsn_format,4}.
+{vsn_pass,46}.
+{time_begin,{{2016,9,13},{10,56,35}}}.
+{method,git}.
+{count_tags,0}.
+{count_branches,0}.
+{revisions,[]}.
+{time_end,{{2016,9,13},{10,56,36}}}.

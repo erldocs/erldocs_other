@@ -19,7 +19,8 @@ main ([Dir]) ->
                 {Repos+1, VersionsBuilt+Built, VersionsFailed+Failed}
         end,
     {R,B,A} = eo_meta:fold(Dir, F, {0,0,0}),
-    io:format("repos ~p\nbuilt ~p\nfailed ~p\n", [R,B,A]);
+    %% #repos #built #failed
+    io:format("~p\t~p\t~p\n", [R,B,A]);
 
 main (_) ->
     usage().

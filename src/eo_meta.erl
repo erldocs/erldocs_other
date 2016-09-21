@@ -42,7 +42,7 @@
 fold (SiteDirectory, Fun, Acc0)
   when is_function(Fun, 2) ->
     F = fun (MetaFile, Acc) ->
-                io:format(" -> ~p\n", [MetaFile]),
+                io:format(standard_error, " -> ~p\n", [MetaFile]),
                 {ok, Meta} = file:consult(MetaFile),
                 Fun(Meta, Acc)
         end,

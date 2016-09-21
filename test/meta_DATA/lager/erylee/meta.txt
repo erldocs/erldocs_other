@@ -1,0 +1,12 @@
+{name,"lager"}.
+{target_path,"github.com/erylee/lager"}.
+{url,"https://github.com/erylee/lager"}.
+{uuid,"ac752b3e6a3aa159b2e68c2fbea3b88dfc01ecfb"}.
+{vsn_format,4}.
+{vsn_pass,50}.
+{time_begin,{{2016,9,13},{10,46,3}}}.
+{method,git}.
+{count_tags,0}.
+{count_branches,0}.
+{revisions,[]}.
+{time_end,{{2016,9,13},{10,46,4}}}.

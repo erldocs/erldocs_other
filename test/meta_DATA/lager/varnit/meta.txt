@@ -1,0 +1,17 @@
+{name,"lager"}.
+{target_path,"github.com/varnit/lager"}.
+{url,"https://github.com/varnit/lager"}.
+{uuid,"32991cc456a67a16fc8bdd6d3f12aae58d6505c9"}.
+{vsn_format,4}.
+{vsn_pass,46}.
+{time_begin,{{2016,9,13},{11,43,20}}}.
+{method,git}.
+{count_tags,0}.
+{count_branches,2}.
+{revisions,[{rev,branch,"master","40abd541f4d8ba436cd2d519ca6ea747ed4681c5",
+                 true,[],[],
+                 [{has_erlang_file,true}]},
+            {rev,branch,"pubdb","69ad7044a15adb58183cb2a29d685af2aeba12a3",
+                 true,[],[],
+                 [{has_erlang_file,true}]}]}.
+{time_end,{{2016,9,13},{11,43,22}}}.

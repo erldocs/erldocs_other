@@ -21,25 +21,27 @@ main ([Dir]) ->
                 Count + 1
         end,
     CountRepos = eo_meta:fold(Dir, F, 0),
-    io:format("# repos: ~p\n", [CountRepos]),
+    io:format(standard_error, "# repos: ~p\n", [CountRepos]),
     G = fun ({Co, Ids}) ->
                 erase(Co),
-                lists:foreach(fun (Id) ->
-                                      append(Id, Ids -- [Id])
-                              end, Ids)
+                A = fun (Id) ->
+                            append(Id, gb_sets:delete_any(Id, Ids))
+                    end,
+                lists:foreach(A, gb_sets:to_list(Ids))
         end,
     lists:foreach(G, get()),
     H = fun ({Id, Similar0}, Count) ->
                 erase(Id),
-                Similar = lists:usort(lists:append(Similar0)),
-                io:format("~s\n\t~p\n", [Id, Similar]),
+                Similar = gb_sets:to_list(Similar0),
+                io:format(standard_error, "~s\t~p\n\t~p\n", [Id, gb_sets:size(Similar0), Similar]),
                 case Similar of
                     [] -> Count;
-                    __ -> Count + 1
+                    _ -> Count + 1
                 end
         end,
     CountForks = lists:foldl(H, 0, get()),
-    io:format("# projects sharing commits: ~p\n", [CountForks]);
+    %% #projects sharing >0 commits
+    io:format("~p\n", [CountForks]);
 
 main (_) ->
     usage().
@@ -48,10 +50,20 @@ main (_) ->
 
 append(Key, Value) ->
     case get(Key) of
-        L when is_list(L) ->
-            put(Key, [Value|L]);
-        _ ->
-            put(Key, [Value])
+        undefined ->
+            case Value of
+                [_Char|_] when is_integer(_Char) ->
+                    put(Key, gb_sets:from_list([Value]));
+                _ ->
+                    put(Key, Value)
+            end;
+        S ->
+            case Value of
+                [_Char|_] when is_integer(_Char) ->
+                    put(Key, gb_sets:add(Value, S));
+                _ ->
+                    put(Key, gb_sets:union(Value, S))
+            end
     end.
 
 usage () ->
