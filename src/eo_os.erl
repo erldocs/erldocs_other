@@ -53,15 +53,15 @@ run (Dir, Cmd, Timeout) ->
     [Exe|Args] = Cmd,
     Executable = os:find_executable(Exe),
     false == Executable andalso ?NOTE("which", "~s not found", [Exe]),
-    Port = open_port( {spawn_executable, Executable}
-                    , [ exit_status
-                      , use_stdio
-                      , stderr_to_stdout
-                      , {args, Args}
-                      , {cd, Dir}
-                      %% , {parallelism, false}
-                      , {line, 64 * 64}
-                      ]
+    Port = open_port({spawn_executable, Executable}
+                    ,[exit_status
+                     ,use_stdio
+                     ,stderr_to_stdout
+                     ,{args, Args}
+                     ,{cd, Dir}
+                     %% ,{parallelism, false}
+                     ,{line, 64 * 64}
+                     ]
                     ),
     loop(Port, [], Timeout).
 

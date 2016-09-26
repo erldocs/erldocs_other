@@ -8,21 +8,21 @@
 -include("erldocs_other.hrl").
 -include("logging.hrl").
 
--export([ main/1
-        , gen/1
+-export([main/1
+        ,gen/1
 
-        , to_file/2
+        ,to_file/2
 
-        , remote_path_blacklist/0
-        , local_path_blacklist/0
+        ,remote_path_blacklist/0
+        ,local_path_blacklist/0
         ]).
 
 %% title/0 represents the name of either a branch or a tag
 -type title() :: string().
 -type rev() :: #rev{}.
 
--export_type([ title/0
-             , rev/0
+-export_type([title/0
+             ,rev/0
              ]).
 
 -define(REMOTE_ROOT, "https://dev.erldocs.com/").
@@ -31,6 +31,7 @@
 -define(FILE_META, "meta.txt").
 -define(REMOTE_URL(TargetPath), ?REMOTE_ROOT ++ TargetPath).
 -define(DOCS_ROOT, "repo").
+
 
 %% API
 
@@ -42,9 +43,10 @@ gen (Conf) ->
     eo_util:mkdir(Odir),
     Tmp     = kf(Conf, dest),
     eo_util:mkdir(Tmp),
+    eo_util:rm_r(filename:jsoin(Tmp, "*")),
     Logfile = filename:join(Tmp, ?FILE_LOG),
-    case main([ {dest, Tmp}
-              , {logfile, Logfile}
+    case main([{dest, Tmp}
+              ,{logfile, Logfile}
               ] ++ Conf)
     of
         {ok, Meta, _MetaFile} ->
