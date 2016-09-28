@@ -568,10 +568,11 @@ is_skippable ([_OldRev|Rest], NewRev, OldMeta) ->
     is_skippable(Rest, NewRev, OldMeta).
 
 remote_docs_exist (Title, Meta) ->
-    case httpc:request(remote_path_docs(Title, Meta)) of
-        {ok, {{_,200,_},_,_}} -> true;
-        _ -> false
-    end.
+    true.%%FIXME: will keep rebuilding titles that cannot success!
+    %% case httpc:request(remote_path_docs(Title, Meta)) of
+    %%     {ok, {{_,200,_},_,_}} -> true;
+    %%     _ -> false
+    %% end.
 
 -spec partition_map (fun((A) -> boolean()|{true,B}), [A]) -> {[A|B], [A]}.
 partition_map (Fun, List) ->
