@@ -33,8 +33,8 @@ new_test_tar (Url) ->
 %% API tests.
 
 gen_test_ () ->
-    [] ++
-        bitbucket() ++
+    %% [new_test_tar("https://github.com/fenollp/erlang-dot")] ++
+    bitbucket() ++
         github() ++
         googlecode() ++
         [].
