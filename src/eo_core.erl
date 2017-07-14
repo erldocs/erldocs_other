@@ -42,8 +42,8 @@ gen (Conf) ->
     Odir    = kf(Conf, website_dir),
     eo_util:mkdir(Odir),
     Tmp     = kf(Conf, dest),
+    eo_util:rmrf(Tmp),
     eo_util:mkdir(Tmp),
-    eo_util:rm_r(filename:join(Tmp, "*")),
     Logfile = filename:join(Tmp, ?FILE_LOG),
     case main([{dest, Tmp}
               ,{logfile, Logfile}
