@@ -1,2 +1,8 @@
+{"1.1.0",
 [{<<"erldocs">>,{pkg,<<"erldocs">>,<<"0.9.6">>},0},
- {<<"erlydtl">>,{pkg,<<"erlydtl">>,<<"0.11.1">>},1}].
+ {<<"erlydtl">>,{pkg,<<"erlydtl">>,<<"0.11.1">>},1}]}.
+[
+{pkg_hash,[
+ {<<"erldocs">>, <<"A4EE958AA38D349B30CAC8C97CE29160600542AFFB5F24C3E313244059B7846F">>},
+ {<<"erlydtl">>, <<"905622B58019DD1EEA5B483620795F9EF2D9171244CD67B4D0BD1B04E540A1EF">>}]}
+].
