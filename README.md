@@ -1,4 +1,4 @@
-#erldocs_other • [GitHub](//github.com/erldocs/erldocs_other)
+# erldocs_other • [GitHub](//github.com/erldocs/erldocs_other)
 
 [![Build Status](https://api.travis-ci.org/erldocs/erldocs_other.svg?branch=master)](https://travis-ci.org/erldocs/erldocs_other)
 
