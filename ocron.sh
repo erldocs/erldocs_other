@@ -2,7 +2,7 @@
 
 S=$(date)
 
-. $HOME/.bin/builds/otp/18.3/activate
+. $HOME/.bin/builds/otp/20.0/activate
 
 osite=~/www/dev.erldocs.com
 apps=$osite/apps.js
