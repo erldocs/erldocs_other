@@ -20,10 +20,10 @@ new_test_tar (Url) ->
     JailDir = filename:join("ebin", UUID),
     DestTar = filename:join(DataDir, UUID) ++ ".tar",
     eo_util:mkdir(JailDir),
-    GenOpts = [ {website_dir, JailDir}
-              , {dest,        JailDir}
-              , {url, Url}
-              , {update_only, false}
+    GenOpts = [{website_dir, JailDir}
+              ,{dest,        JailDir}
+              ,{url, Url}
+              ,{update_only, false}
               ],
     {ok, _Url, _Dest, _Link} = eo_core:gen(GenOpts),
     ArchGot = list_files(JailDir),
@@ -33,8 +33,8 @@ new_test_tar (Url) ->
 %% API tests.
 
 gen_test_ () ->
-    [] ++
-        bitbucket() ++
+    %% [new_test_tar("https://github.com/fenollp/erlang-dot")] ++
+    bitbucket() ++
         github() ++
         googlecode() ++
         [].
@@ -42,16 +42,19 @@ gen_test_ () ->
 %% Internals
 
 bitbucket () ->
-    [ do("https://bitbucket.org/fenollp/ring")
-    , do("https://bitbucket.org/fenollp/tmln-google")
-    , do("https://bitbucket.org/fenollp/asql") ].
+    [do("https://bitbucket.org/fenollp/ring")
+    ,do("https://bitbucket.org/fenollp/tmln-google")
+    ,do("https://bitbucket.org/fenollp/asql")
+    ].
 
 github () ->
-    [ do("https://github.com/fenollp/erlang-dot")
-    , do("https://github.com/fenollp/patmat") ].
+    [do("https://github.com/fenollp/erlang-dot")
+    ,do("https://github.com/fenollp/patmat")
+    ].
 
 googlecode () ->
-    [ do("https://code.google.com/p/plists") ].
+    [do("https://code.google.com/p/plists")
+    ].
 
 
 rmr (Dir) ->
@@ -62,38 +65,41 @@ do (Url) ->
     %% Note: CWD = Git root
     %% Generated: ebin/website.tld,user,reponame/{,tmp_random}
     {setup
-    , fun () ->
-              Dir = filename:join("ebin", make_name(Url)),
-              rmr(Dir),
-              Dir
-      end
-    , fun rmr/1
+    ,fun () ->
+             Dir = filename:join("ebin", make_name(Url)),
+             rmr(Dir),
+             Dir
+     end
+    ,fun rmr/1
 
-    , fun (_ReturnOfSetup) ->
-              DataDir = "test/eo_core_DATA",
-              UUID = make_name(Url),
-              JailDir = filename:join("ebin", UUID),
-              eo_util:mkdir(JailDir),
-              ArchExpected = list_files(filename:join(DataDir, UUID) ++ ".tar"),
-              GenOpts = [ {website_dir, JailDir}
-                        , {dest,        JailDir}
-                        , {url, Url}
-                        , {update_only, false}
-                        ],
-              {ok, Url, _Dest, _Link} = eo_core:gen(GenOpts),
-              ArchGot = list_files(JailDir),
-              ?DBG("Expected: ~p\n", [ArchExpected]),
-              ?DBG("Got: ~p\n", [ArchGot]),
-              [ ?_assertEqual(length(ArchExpected), length(ArchGot))
-              , ?_assertEqual(ArchExpected, ArchGot) ]
-      end}.
+    ,fun (_ReturnOfSetup) ->
+             DataDir = "test/eo_core_DATA",
+             UUID = make_name(Url),
+             JailDir = filename:join("ebin", UUID),
+             eo_util:mkdir(JailDir),
+             ArchExpected = list_files(filename:join(DataDir, UUID) ++ ".tar"),
+             GenOpts = [{website_dir, JailDir}
+                       ,{dest,        JailDir}
+                       ,{url, Url}
+                       ,{update_only, false}
+                       ],
+             {ok, Url, _Dest, _Link} = eo_core:gen(GenOpts),
+             ArchGot = list_files(JailDir),
+             ?DBG("Expected: ~p\n", [ArchExpected]),
+             ?DBG("Got: ~p\n", [ArchGot]),
+             [?_assertEqual(length(ArchExpected), length(ArchGot))
+             ,?_assertEqual(ArchExpected, ArchGot)
+             ]
+     end}.
 
 make_name (Url0) ->
     {true, Url} = eo_scm:url(Url0),
-    [ case C of
-          $/ -> $,;
-          _ -> C
-      end || C <- eo_scm:repo_local_path(Url)].
+    [case C of
+         $/ -> $,;
+         _ -> C
+     end
+     || C <- eo_scm:repo_local_path(Url)
+    ].
 
 list_files (Path) ->
     lists:usort(
@@ -102,10 +108,11 @@ list_files (Path) ->
               {ok, Files} = erl_tar:table(Path),
               Files;
           false ->
-              filelib:fold_files(Path, ".+", true, fun put_head/2, [])
-      end).
+              filelib:fold_files(Path, ".+", true, fun cons/2, [])
+      end
+     ).
 
-put_head (Head, Tail) ->
+cons (Head, Tail) ->
     [Head | Tail].
 
 %% End of Module.
