@@ -482,10 +482,12 @@ make_name (RepoName, Title, tag) ->
 make_name (RepoName, Title, branch) ->
     make_name(RepoName, Title, "branch");
 make_name (RepoName, Branch, RevKind) ->
-    [ case C of
+    [case C of
          $/ -> $_;
          _ -> C
-      end || C <- string:join([RepoName,RevKind,Branch], "-") ].
+     end
+     || C <- string:join([RepoName,RevKind,Branch], "-")
+    ].
 
 metafile (Dest) ->
     filename:join(Dest, ?FILE_META).
@@ -506,16 +508,16 @@ extract_info (UpdateOnly, Method, Url, TimeBegin) ->
     ?NOTE("repo", "~p branches, ~p tags", [BranchesCount, TagsCount]),
     TargetPath = eo_scm:repo_local_path(Url),
     OldMeta = consult_meta(UpdateOnly, TargetPath),
-    {ok, OldMeta, TBs, [ {name, eo_scm:repo_name(Url)}
-                       , {target_path, TargetPath}
-                       , {url, Url}
-                       , {uuid, eo_scm:uuid(Url)}
-                       , {vsn_format, 4}
-                       , {vsn_pass, bump_pass(OldMeta)}
-                       , {time_begin, TimeBegin}
-                       , {method, Method}
-                       , {count_tags, TagsCount}
-                       , {count_branches, BranchesCount}
+    {ok, OldMeta, TBs, [{name, eo_scm:repo_name(Url)}
+                       ,{target_path, TargetPath}
+                       ,{url, Url}
+                       ,{uuid, eo_scm:uuid(Url)}
+                       ,{vsn_format, 4}
+                       ,{vsn_pass, bump_pass(OldMeta)}
+                       ,{time_begin, TimeBegin}
+                       ,{method, Method}
+                       ,{count_tags, TagsCount}
+                       ,{count_branches, BranchesCount}
                        ]}.
 
 utc () ->
@@ -568,6 +570,7 @@ is_skippable ([_OldRev|Rest], NewRev, OldMeta) ->
     is_skippable(Rest, NewRev, OldMeta).
 
 remote_docs_exist (Title, Meta) ->
+    %%TODO: HEAD dev.erldocs.com/bitbucket.org/nato/yanni/master/index.html
     true.%%FIXME: will keep rebuilding titles that cannot success!
     %% case httpc:request(remote_path_docs(Title, Meta)) of
     %%     {ok, {{_,200,_},_,_}} -> true;
